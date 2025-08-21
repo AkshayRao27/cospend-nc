@@ -9,14 +9,22 @@
 			:unreachable-projects="unreachableFederatedProject"
 			:loading="projectsLoading" />
 		<NcAppContent
+			:class="{ 'can-toggle-sidebar': canToggleSidebar }"
 			:list-max-width="isSidebarOpen ? 40 : 50"
 			:list-min-width="isSidebarOpen ? 30 : 20"
 			:list-size="isSidebarOpen ? 30 : 20"
 			:show-details="shouldShowDetails"
 			@update:showDetails="showList">
 			<template #list>
+				<!-- Cross-project balance list (left side) -->
+				<CrossProjectBalanceView
+					v-if="mode === 'cross-project-balances'"
+					ref="crossProjectBalanceView"
+					@close="onCloseCrossProjectBalances"
+					@settlement-person-selected="onSettlementPersonSelected" />
+				<!-- Normal project bill list -->
 				<BillList
-					v-if="currentProjectId"
+					v-else-if="currentProjectId"
 					ref="billList"
 					:loading="billsLoading"
 					:project-id="currentProjectId"
@@ -66,11 +74,17 @@
 					v-else-if="mode === 'settle'"
 					:project-id="currentProjectId"
 					@auto-settled="onAutoSettled" />
-				<!-- Cross-project balance view component (GitHub issue #281) -->
-				<!-- Shows aggregated balance information across all user's projects -->
-				<CrossProjectBalanceView
-					v-else-if="mode === 'cross-project-balances'"
-					@close="onCloseCrossProjectBalances" />
+				<!-- Cross-project settlement interface
+					Shows when a person is selected for settlement from the balance view.
+					Handles creating settlements between users across multiple projects.
+					Previous sidebar-based settlement system was removed in favor of this direct approach.
+				-->
+				<CrossProjectSettlement
+					v-if="mode === 'cross-project-balances'"
+					ref="crossProjectSettlement"
+					:current-settlement-person="currentSettlementPerson"
+					@cancel-settlement="onCancelSettlement"
+					@settlement-created="onSettlementCreated" />
 				<NcEmptyContent v-show="showProjectEmptyContent"
 					class="central-empty-content"
 					:name="t('cospend', 'What do you want to do?')"
@@ -139,12 +153,13 @@
 		<CospendSettingsDialog
 			@update-max-precision="onUpdateMaxPrecision" />
 		<Sidebar
-			v-if="currentProjectId"
+			v-if="currentProjectId || mode === 'cross-project-balances'"
 			ref="sidebar"
-			:project-id="currentProjectId"
+			:project-id="currentProjectId || 'cross-project'"
 			:bills="currentBills"
 			:members="currentMembers"
-			:open="currentProjectId && isSidebarOpen"
+			:settlement-data="currentSettlementData"
+			:open="(currentProjectId || mode === 'cross-project-balances') && isSidebarOpen"
 			:active-tab="activeSidebarTab"
 			@update:open="onSidebarUpdateOpen"
 			@active-changed="onActiveSidebarTabChanged"
@@ -154,7 +169,9 @@
 			@new-member="onNewMember"
 			@export-clicked="onExportClicked"
 			@paymentmode-deleted="onPaymentModeDeleted"
-			@category-deleted="onCategoryDeleted" />
+			@category-deleted="onCategoryDeleted"
+			@cancel-settlement="onCancelSettlement"
+			@confirm-settlement="onConfirmSettlement" />
 	</NcContent>
 </template>
 
@@ -195,6 +212,7 @@ import NcAppContent from '@nextcloud/vue/dist/Components/NcAppContent.js'
 import Statistics from './components/statistics/Statistics.vue'
 import Settlement from './Settlement.vue'
 import CrossProjectBalanceView from './components/CrossProjectBalanceView.vue'
+import CrossProjectSettlement from './components/CrossProjectSettlement.vue'
 import CospendNavigation from './components/CospendNavigation.vue'
 import CospendSettingsDialog from './components/CospendSettingsDialog.vue'
 import BillForm from './BillForm.vue'
@@ -222,6 +240,7 @@ export default {
 		Statistics,
 		Settlement,
 		CrossProjectBalanceView,
+		CrossProjectSettlement,
 		Sidebar,
 		NcContent,
 		NcAppContent,
@@ -263,16 +282,28 @@ export default {
 			billToMove: null,
 			pendingInvitations: [],
 			unreachableFederatedProject: [],
+			// Cross-project settlement state
+			currentSettlementPerson: null,
+			currentSettlementData: null,
+			availableCurrencies: [],
 		}
 	},
 	computed: {
 		shouldShowDetails() {
+			// On mobile for cross-project balances, show details if there's a settlement person selected or settlement data
+			if (this.mode === 'cross-project-balances') {
+				return this.currentSettlementPerson !== null || this.currentSettlementData !== null
+			}
 			return (this.currentBill && this.currentBill !== null) || !['edition', 'normal'].includes(this.mode)
 		},
 		showProjectEmptyContent() {
 			return this.currentProjectId
 				&& (this.mode === 'normal'
 					|| (this.mode === 'edition' && this.currentBill === null))
+		},
+		canToggleSidebar() {
+			// Hide sidebar toggle in cross-project balances mode and regular settlement mode
+			return !(this.mode === 'cross-project-balances' || this.mode === 'settle') && this.currentProjectId !== null
 		},
 		currentProjectId() {
 			return this.cospend.currentProjectId
@@ -728,7 +759,36 @@ export default {
 			// Return to normal mode
 			this.mode = 'edition'
 			this.currentBill = null
+			// Clear settlement state
+			this.currentSettlementPerson = null
+			this.availableCurrencies = []
 			// Don't select any specific project, let user choose
+		},
+		/**
+		 * Handle settlement person selection from balance view
+		 *
+		 * @param {object} person The person selected for settlement
+		 */
+		onSettlementPersonSelected(person) {
+			this.currentSettlementPerson = person
+		},
+		/**
+		 * Handle canceling current settlement
+		 */
+		onCancelSettlement() {
+			this.currentSettlementPerson = null
+			this.currentSettlementData = null
+		},
+		/**
+		 * Handle settlement creation completion
+		 */
+		onSettlementCreated() {
+			// Refresh balance data to show updated balances
+			if (this.$refs.crossProjectBalanceView) {
+				this.$refs.crossProjectBalanceView.loadBalances()
+			}
+			// Clear settlement state
+			this.currentSettlementPerson = null
 		},
 		onTrashbinClicked(projectId) {
 			if (cospend.currentProjectId === projectId && this.trashbinEnabled) {
@@ -1329,7 +1389,14 @@ export default {
 		},
 		showList() {
 			this.currentBill = null
-			this.mode = 'edition'
+			// Only switch to edition mode if we're not in cross-project-balances mode
+			if (this.mode !== 'cross-project-balances') {
+				this.mode = 'edition'
+			} else {
+				// In cross-project balances mode, clear settlement person to go back to balance list
+				this.currentSettlementPerson = null
+				this.currentSettlementData = null
+			}
 		},
 	},
 }
@@ -1359,6 +1426,11 @@ export default {
 
 .iconButton {
 	padding: 0px;
+}
+
+/* Hide sidebar toggle button when not functional */
+.app-content:not(.can-toggle-sidebar) ::v-deep .app-content-details__toggle {
+	display: none !important;
 }
 </style>
 

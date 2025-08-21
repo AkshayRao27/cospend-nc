@@ -18,6 +18,7 @@ use OC\User\NoUserException;
 use OCA\Cospend\AppInfo\Application;
 use OCA\Cospend\Db\Invitation;
 use OCA\Cospend\Db\InvitationMapper;
+use OCA\Cospend\Exception\CospendBasicException;
 use OCA\Cospend\Utils;
 
 use OCP\DB\Exception;
@@ -1094,7 +1095,7 @@ class CospendService {
      * 
      * @since 1.6.0 Added for cross-project balance aggregation feature
      */
-    public function getCrossGroupBalances(string $userId): array {
+    public function getCrossProjectBalances(string $userId): array {
         $projects = $this->localProjectService->getLocalProjects($userId);
         $currencyTotals = [];
         $personBalances = [];
@@ -1114,11 +1115,16 @@ class CospendService {
         foreach ($projects as $project) {
             $projectId = $project['id'];
             $projectName = $project['name'];
-            $projectCurrency = $project['currencyname'] ?? 'EUR'; // Default to EUR if not set
+            $projectCurrency = $project['currencyname'] ?? null;
             
             // Skip archived projects as they don't contribute to active balances
             if ($project['archived_ts'] !== null) {
                 continue;
+            }
+            
+            // Use default currency label for projects without a currency set
+            if ($projectCurrency === null || $projectCurrency === '') {
+                $projectCurrency = $this->l10n->t('No currency');
             }
             
             // Initialize currency totals if needed
@@ -1310,5 +1316,120 @@ class CospendService {
         }
         return 'name:' . strtolower(trim($member['name'] ?? ''));
     }
-    
+
+    /**
+     * Create cross-project settlement bills
+     * 
+     * Creates reimbursement bills across multiple projects to settle balances between users.
+     * Bills are distributed proportionally across projects based on the breakdown provided.
+     * 
+     * @param string $currentUserId Current user's ID
+     * @param string $targetUserId Target user's ID 
+     * @param string $targetUserName Target user's name
+     * @param string $currency Currency for settlement
+     * @param float $totalAmount Total settlement amount
+     * @param bool $isPayment True if current user is paying, false if receiving
+     * @param array $projectBreakdown Array of project breakdown with amounts
+     * @throws CospendBasicException If settlement creation fails
+     * 
+     * @since 1.6.0 Added for cross-project settlement feature
+     */
+    public function createCrossProjectSettlement(
+        string $currentUserId,
+        string $targetUserId,
+        string $targetUserName,
+        string $currency,
+        float $totalAmount,
+        bool $isPayment,
+        array $projectBreakdown
+    ): void {
+        if (empty($projectBreakdown)) {
+            throw new CospendBasicException('', 400, ['message' => 'No projects specified for settlement']);
+        }
+
+        if ($totalAmount <= 0) {
+            throw new CospendBasicException('', 400, ['message' => 'Settlement amount must be positive']);
+        }
+
+        // Get current user's projects to validate access
+        $userProjects = $this->localProjectService->getLocalProjects($currentUserId);
+        $userProjectIds = array_column($userProjects, 'id');
+
+        $currentUserName = $currentUserId; // Fallback to user ID
+        $timestamp = (new \DateTime())->getTimestamp();
+
+        foreach ($projectBreakdown as $projectInfo) {
+            $projectId = $projectInfo['projectId'];
+            $billAmount = $projectInfo['billAmount'];
+
+            // Validate user has access to this project
+            if (!in_array($projectId, $userProjectIds)) {
+                throw new CospendBasicException('', 403, ['message' => "Access denied to project {$projectId}"]);
+            }
+
+            // Skip very small amounts to avoid clutter
+            if ($billAmount < 0.01) {
+                continue;
+            }
+
+            try {
+                // Get project members to find member IDs
+                $members = $this->localProjectService->getMembers($projectId);
+                $currentUserMember = null;
+                $targetUserMember = null;
+
+                foreach ($members as $member) {
+                    if ($member['userid'] === $currentUserId) {
+                        $currentUserMember = $member;
+                        $currentUserName = $member['name'];
+                    }
+                    if ($member['userid'] === $targetUserId) {
+                        $targetUserMember = $member;
+                    }
+                }
+
+                if (!$currentUserMember || !$targetUserMember) {
+                    // Skip this project if either user is not a member
+                    continue;
+                }
+
+                // Determine bill direction: who pays whom
+                if ($isPayment) {
+                    // Current user is paying target user
+                    $payerId = $currentUserMember['id'];
+                    $owerId = $targetUserMember['id'];
+                    $billTitle = "{$currentUserName} → {$targetUserName}";
+                } else {
+                    // Target user is paying current user  
+                    $payerId = $targetUserMember['id'];
+                    $owerId = $currentUserMember['id'];
+                    $billTitle = "{$targetUserName} → {$currentUserName}";
+                }
+
+                // Create reimbursement bill using existing bill creation logic
+                $this->localProjectService->createBill(
+                    $projectId,
+                    null, // bill ID (null for new)
+                    $billTitle,
+                    $payerId,
+                    $owerId,
+                    $billAmount,
+                    Application::FREQUENCY_NO, // no repeat
+                    'n', // no repeat
+                    0, // no repeat
+                    Application::CATEGORY_REIMBURSEMENT, // reimbursement category
+                    0, // no category color
+                    null, // no payment mode
+                    $timestamp
+                );
+
+            } catch (\Exception $e) {
+                throw new CospendBasicException(
+                    '',
+                    400,
+                    ['message' => "Failed to create bill in project {$projectId}: {$e->getMessage()}"]
+                );
+            }
+        }
+    }
 }

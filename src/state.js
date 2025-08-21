@@ -29,6 +29,11 @@ const cospend = {
 	// Controls whether project breakdown details are collapsed by default
 	// Set to true for cleaner UI, especially beneficial for users with many projects
 	hideProjectsByDefault: true,
+	// Cross-project balance sort settings
+	personSortBy: 'balance', // 'balance', 'name'
+	personSortOrder: 'desc', // 'asc', 'desc'
+	summarySortBy: 'amount', // 'amount', 'currency'
+	summarySortOrder: 'desc', // 'asc', 'desc'
 }
 
 export default cospend

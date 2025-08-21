@@ -160,20 +160,22 @@
 				</select>
 			</NcAppSettingsSection>
 			<NcAppSettingsSection
-				id="cumulated-balance"
-				:name="t('cospend', 'Cumulated balances')"
-				:title="t('cospend', 'Cumulated balances')"
+				id="cumulative-balance"
+				:name="t('cospend', 'Cumulative balances')"
+				:title="t('cospend', 'Cumulative balances')"
 				class="app-settings-section">
 				<NcCheckboxRadioSwitch
 					:checked.sync="showMyBalance"
 					@update:checked="onCheckboxChange($event, 'showMyBalance')">
-					{{ t('cospend', 'Show cumulated balances') }}
+					{{ t('cospend', 'Show cumulative balances') }}
 				</NcCheckboxRadioSwitch>
 				<h3 class="app-settings-section__hint">
-					{{ t('cospend', 'Cumulated balances view customisation') }}
+					{{ t('cospend', 'Cumulative balances view customisation') }}
 				</h3>
-				<!-- Cross-project balance display order control -->
-				<!-- Allows users to choose whether Summary or People section appears first -->
+				<!-- Section Ordering Control
+					Allows users to choose whether Balance Summary or People sections appear first
+					in the cumulative balances view for better user experience customization
+				-->
 				<label for="display-order-select">
 					{{ t('cospend', 'First Section: ') }}
 				</label>
@@ -186,8 +188,10 @@
 					</option>
 				</select>
 				<br>
-				<!-- Project details visibility control -->
-				<!-- Replaces problematic checkbox with reliable dropdown for hiding/showing project breakdowns -->
+				<!-- Project Details Visibility Control
+					Controls whether project breakdowns are expanded or collapsed by default
+					Uses dropdown instead of checkbox for better reliability
+				-->
 				<label for="hide-projects-select">
 					{{ t('cospend', 'Project details: ') }}
 				</label>
@@ -197,6 +201,55 @@
 					</option>
 					<option value="hide">
 						{{ t('cospend', 'Collapse by default') }}
+					</option>
+				</select>
+				<br>
+				<!-- Sorting Controls for Cumulative Balances
+					These settings control how items are ordered in the balance view
+					Settings persist in global state and are used by CrossProjectBalanceView
+				-->
+				<h4 class="sort-section-title">
+					{{ t('cospend', 'Sort Options') }}
+				</h4>
+				<!-- Person Balances Sorting Options -->
+				<label for="person-sort-by-select">
+					{{ t('cospend', 'Sort Balances by People by: ') }}
+				</label>
+				<select id="person-sort-by-select" v-model="personSortBy" @change="onPersonSortChange">
+					<option value="balance">
+						{{ t('cospend', 'Balance Amount') }}
+					</option>
+					<option value="name">
+						{{ t('cospend', 'Name') }}
+					</option>
+				</select>
+				<select v-model="personSortOrder" @change="onPersonSortChange">
+					<option value="desc">
+						{{ personSortBy === 'balance' ? t('cospend', 'High to Low') : t('cospend', 'Z to A') }}
+					</option>
+					<option value="asc">
+						{{ personSortBy === 'balance' ? t('cospend', 'Low to High') : t('cospend', 'A to Z') }}
+					</option>
+				</select>
+				<br>
+				<!-- Summary sort options -->
+				<label for="summary-sort-by-select">
+					{{ t('cospend', 'Sort Summary by: ') }}
+				</label>
+				<select id="summary-sort-by-select" v-model="summarySortBy" @change="onSummarySortChange">
+					<option value="amount">
+						{{ t('cospend', 'Amount') }}
+					</option>
+					<option value="currency">
+						{{ t('cospend', 'Currency') }}
+					</option>
+				</select>
+				<select v-model="summarySortOrder" @change="onSummarySortChange">
+					<option value="desc">
+						{{ summarySortBy === 'amount' ? t('cospend', 'High to Low') : t('cospend', 'Z to A') }}
+					</option>
+					<option value="asc">
+						{{ summarySortBy === 'amount' ? t('cospend', 'Low to High') : t('cospend', 'A to Z') }}
 					</option>
 				</select>
 			</NcAppSettingsSection>
@@ -277,6 +330,11 @@ export default {
 			// Convert boolean hideProjectsByDefault to dropdown-friendly string value
 			// This allows for intuitive dropdown selection (show/hide) instead of boolean checkbox
 			hideProjectsVisibility: (cospend.hideProjectsByDefault ?? true) ? 'hide' : 'show',
+			// Cumulative balance sort settings
+			personSortBy: cospend.personSortBy || 'balance',
+			personSortOrder: cospend.personSortOrder || 'desc',
+			summarySortBy: cospend.summarySortBy || 'amount',
+			summarySortOrder: cospend.summarySortOrder || 'desc',
 			importingProject: false,
 			importingSWProject: false,
 			cospendVersion: OC.getCapabilities()?.cospend?.version || '??',
@@ -366,6 +424,22 @@ export default {
 			// Update global cospend state immediately for reactive UI updates
 			cospend.hideProjectsByDefault = hideProjectsByDefault
 		},
+		onPersonSortChange() {
+			// Save person sort settings
+			emit('save-option', { key: 'personSortBy', value: this.personSortBy })
+			emit('save-option', { key: 'personSortOrder', value: this.personSortOrder })
+			// Update global cospend state
+			cospend.personSortBy = this.personSortBy
+			cospend.personSortOrder = this.personSortOrder
+		},
+		onSummarySortChange() {
+			// Save summary sort settings
+			emit('save-option', { key: 'summarySortBy', value: this.summarySortBy })
+			emit('save-option', { key: 'summarySortOrder', value: this.summarySortOrder })
+			// Update global cospend state
+			cospend.summarySortBy = this.summarySortBy
+			cospend.summarySortOrder = this.summarySortOrder
+		},
 		onImportClick() {
 			importCospendProject(() => {
 				this.importingProject = true
@@ -443,6 +517,45 @@ a.external {
 		align-items: center;
 		> * {
 			margin: 0 4px 0 4px;
+		}
+	}
+
+	.sort-section-title {
+		margin-top: 16px;
+		margin-bottom: 8px;
+		font-weight: 600;
+		font-size: 1.1em;
+	}
+
+	select {
+		margin: 4px 8px 8px 0;
+		padding: 4px 8px;
+		border: 1px solid var(--color-border);
+		border-radius: var(--border-radius);
+		background: var(--color-main-background);
+		min-width: 120px;
+
+		&:focus {
+			border-color: var(--color-primary);
+			outline: none;
+		}
+
+		@media (max-width: 768px) {
+			margin: 4px 0 8px 0;
+			width: 100%;
+			min-width: unset;
+			max-width: 280px;
+		}
+	}
+
+	label {
+		display: inline-block;
+		margin: 8px 8px 4px 0;
+		font-weight: 500;
+
+		@media (max-width: 768px) {
+			margin: 8px 0 4px 0;
+			display: block;
 		}
 	}
 }

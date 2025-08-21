@@ -1735,8 +1735,52 @@ class ApiController extends OCSController {
 	 */
 	#[NoAdminRequired]
 	#[OpenAPI(scope: OpenAPI::SCOPE_DEFAULT, tags: ['Projects'])]
-	public function getCrossGroupBalances(): DataResponse {
-		$balances = $this->cospendService->getCrossGroupBalances($this->userId);
+	public function getCrossProjectBalances(): DataResponse {
+		$balances = $this->cospendService->getCrossProjectBalances($this->userId);
 		return new DataResponse($balances);
+	}
+
+	/**
+	 * Create cross-project settlement bills
+	 *
+	 * Creates reimbursement bills across multiple projects to settle balances between the current user
+	 * and another user. Bills are distributed proportionally across projects based on individual balances.
+	 * 
+	 * @param string $targetUserId ID of the user to settle with
+	 * @param string $targetUserName Name of the user to settle with  
+	 * @param string $currency Currency for settlement
+	 * @param float $totalAmount Total amount to settle
+	 * @param bool $isPayment True if current user is paying, false if receiving
+	 * @param array $projectBreakdown Array of project breakdown objects
+	 * @return DataResponse<Http::STATUS_OK, '', array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array<string, string>, array{}>
+	 * 
+	 * @since 1.6.0 Added for cross-project settlement feature
+	 */
+	#[NoAdminRequired]
+	#[OpenAPI(scope: OpenAPI::SCOPE_DEFAULT, tags: ['Projects'])]
+	public function createCrossProjectSettlement(
+		string $targetUserId,
+		string $targetUserName,
+		string $currency,
+		float $totalAmount,
+		bool $isPayment,
+		array $projectBreakdown
+	): DataResponse {
+		try {
+			$this->cospendService->createCrossProjectSettlement(
+				$this->userId,
+				$targetUserId,
+				$targetUserName,
+				$currency,
+				$totalAmount,
+				$isPayment,
+				$projectBreakdown
+			);
+			return new DataResponse('');
+		} catch (CospendBasicException $e) {
+			return new DataResponse($e->data, Http::STATUS_BAD_REQUEST);
+		} catch (\Exception $e) {
+			return new DataResponse(['message' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+		}
 	}
 }

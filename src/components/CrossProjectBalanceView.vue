@@ -696,7 +696,9 @@ export default {
 			return [
 				{ id: 'balance', label: this.t('cospend', 'Balance') },
 				{ id: 'name', label: this.t('cospend', 'Name') },
-				{ id: 'currency', label: this.t('cospend', 'Currency') },
+				{ id: 'balance', label: t('cospend', 'Balance') },
+				{ id: 'name', label: t('cospend', 'Name') },
+				{ id: 'currency', label: t('cospend', 'Currency') },
 			]
 		},
 

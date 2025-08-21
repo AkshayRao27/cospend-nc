@@ -671,7 +671,8 @@ export default {
 		summarySortByOptions() {
 			return [
 				{ id: 'amount', label: this.t('cospend', 'Amount') },
-				{ id: 'currency', label: this.t('cospend', 'Currency') },
+				{ id: 'amount', label: t('cospend', 'Amount') },
+				{ id: 'currency', label: t('cospend', 'Currency') },
 			]
 		},
 

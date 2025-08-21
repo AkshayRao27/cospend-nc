@@ -683,7 +683,8 @@ export default {
 		summarySortOrderOptions() {
 			return [
 				{ id: 'desc', label: this.t('cospend', 'Descending') },
-				{ id: 'asc', label: this.t('cospend', 'Ascending') },
+				{ id: 'desc', label: t('cospend', 'Descending') },
+				{ id: 'asc', label: t('cospend', 'Ascending') },
 			]
 		},
 

@@ -63,6 +63,7 @@
 							</span>
 						</span>
 						<div v-if="showConfirmationDialog && confirmationBreakdown.length > 0" class="project-summary">
+							<span><strong>{{ t('cospend', 'Projects:') }}</strong></span>
 							<div class="project-list-summary">
 								<div v-for="project in confirmationBreakdown" :key="project.id" class="project-item-summary">
 									<span class="project-name">{{ project.name }}</span>

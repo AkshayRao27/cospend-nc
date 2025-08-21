@@ -712,7 +712,7 @@ export default {
 			if (amount === undefined || amount === null) return '0'
 			const currencyCode = typeof currency === 'string' ? currency : currency?.id || currency?.label || 'EUR'
 			const formatted = parseFloat(amount).toFixed(2)
-			const direction = isPayment ? this.t('cospend', 'You pay') : this.t('cospend', 'You receive')
+			const direction = isPayment ? t('cospend', 'You pay') : t('cospend', 'You receive')
 			return `${direction} ${currencyCode} ${formatted}`
 		},
 

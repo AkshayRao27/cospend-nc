@@ -53,10 +53,12 @@ function getOptionValuesSuccess(response) {
 			} else if (k === 'showSummaryFirst') {
 				// Cross-project balance settings: Convert server string ('1'/'0') to boolean
 				// This ensures proper boolean type for reactive Vue components and prevents persistence issues
+				// Fix: Server stores as string, but Vue components expect boolean for proper reactivity
 				cospend.showSummaryFirst = optionsValues[k] !== '0'
 			} else if (k === 'hideProjectsByDefault') {
 				// Cross-project balance settings: Convert server string ('1'/'0') to boolean
 				// Critical fix for settings persistence - ensures boolean type consistency across login/logout
+				// Without this conversion, the setting would be treated as truthy string and cause UI bugs
 				cospend.hideProjectsByDefault = optionsValues[k] !== '0'
 			} else {
 				cospend[k] = optionsValues[k]
@@ -72,8 +74,8 @@ function getOptionValuesSuccess(response) {
 	if (restoredCurrentBillId !== 0) {
 		cospend.restoredCurrentBillId = restoredCurrentBillId
 	}
-	console.debug('restored project ID', cospend.restoredCurrentProjectId)
-	console.debug('restored bill ID', cospend.restoredCurrentBillId)
+	// Debug console logs removed for production - previous version logged restored IDs
+	// which could expose sensitive project information in browser console
 	main()
 }
 

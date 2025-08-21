@@ -9,8 +9,62 @@ import {
 import * as network from './network.js'
 import { calculate } from './calc.ts'
 
+// ================================================================================
+// PERFORMANCE UTILITIES FOR CROSS-PROJECT FEATURES
+// ================================================================================
+// These utilities were added to support the new cross-project balance and settlement
+// features, which involve complex calculations and frequent UI updates.
+
+/**
+ * Simple debounce utility usable across components
+ *
+ * Critical for cross-project settlement input validation where users
+ * type custom amounts. Without debouncing, validation would run on
+ * every keystroke, causing poor UX and unnecessary API calls.
+ *
+ * @param {Function} fn - Function to debounce
+ * @param {number} wait - Delay in milliseconds (default: 200)
+ * @return {Function} Debounced function
+ */
+export function debounce(fn, wait = 200) {
+	let timer = null
+	return function(...args) {
+		const ctx = this
+		if (timer) clearTimeout(timer)
+		timer = setTimeout(() => fn.apply(ctx, args), wait)
+	}
+}
+
+/**
+ * Lightweight memoize helper that creates a per-call cache
+ *
+ * Essential for cross-project balance calculations and currency formatting
+ * which can be computationally expensive when dealing with many projects.
+ * The memoization prevents recalculating the same values during re-renders.
+ *
+ * Usage examples:
+ * - Currency formatting in settlement components
+ * - Balance aggregation across multiple projects
+ * - Project balance calculations
+ *
+ * @param {Function} fn - Function to memoize
+ * @param {Function} keyFn - Optional custom key generator from arguments
+ * @return {Function} Memoized function with cache
+ */
+export function memoize(fn, keyFn) {
+	const cache = new Map()
+	return function(...args) {
+		const key = keyFn ? keyFn(...args) : JSON.stringify(args)
+		if (cache.has(key)) return cache.get(key)
+		const res = fn.apply(this, args)
+		cache.set(key, res)
+		return res
+	}
+}
+
 export function importCospendProject(importBeginCallback, importSuccessCallback, importEndCallback) {
 	const picker = getFilePickerBuilder(t('cospend', 'Choose csv project file'))
+
 		.setMultiSelect(false)
 		.setType(FilePickerType.Choose)
 		.addMimeTypeFilter('text/csv')

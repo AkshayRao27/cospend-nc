@@ -1717,7 +1717,7 @@ class ApiController extends OCSController {
 	 *
 	 * 200: Cross-project balance
 	 * 
-	 * This endpoint implements Cross - project balances from GitHub issue #281.
+	 * This endpoint implements Cross-project balances from GitHub issue #281.
 	 * It provides aggregated balance information showing what the current user owes
 	 * to and is owed by other users across all projects they participate in.
 	 * 

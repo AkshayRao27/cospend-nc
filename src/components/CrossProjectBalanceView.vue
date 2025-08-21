@@ -589,7 +589,7 @@ export default {
 			const maxAmount = Math.abs(this.settlementAmount)
 			if (this.partialSettlementAmount > maxAmount) {
 				const over = this.partialSettlementAmount - maxAmount
-				return this.t('cospend', 'Amount is {amount} {currency} over the maximum', {
+				return t('cospend', 'Amount is {amount} {currency} over the maximum', {
 					amount: this.formatCurrency(over),
 					currency: this.settlementCurrency,
 				})

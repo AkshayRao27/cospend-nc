@@ -1093,7 +1093,32 @@ class CospendService {
      *   - summary: Human-readable summary arrays for display grouped by currency
      * 
      * @since 1.6.0 Added for cross-project balance aggregation feature
-     */
+	 * Get cross-project balances aggregated by person and currency across all projects
+	 *
+	 * This method implements GitHub issue #281 - Cross-project balances feature.
+	 * It calculates and aggregates debts/credits between the current user and all other
+	 * members across all projects they participate in, grouped by currency.
+	 *
+	 * The calculation logic:
+	 * 1. Iterates through all non-archived projects where user is a member
+	 * 2. For each project, gets the current balance state using existing settlement logic
+	 * 3. Aggregates balances by person and currency (using userid if available, or name as fallback)
+	 * 4. Returns currency-grouped summary totals and per-person breakdowns with project details
+	 *
+	 * Balance interpretation (from current user's perspective):
+	 * - Positive balance = current user owes money to that person
+	 * - Negative balance = that person owes money to current user
+	 *
+	 * This matches the existing settlement view's calculation logic for consistency.
+	 *
+	 * @param string $userId The current user's Nextcloud user ID
+	 * @return array Contains:
+	 *   - currencyTotals: Array keyed by currency with totalOwed, totalOwedTo, netBalance for each
+	 *   - personBalances: Array of per-person balance details with currency breakdowns
+	 *   - summary: Human-readable summary arrays for display grouped by currency
+	 *
+	 * @since 1.6.0 Added for cross-project balance aggregation feature
+	 */
     public function getCrossGroupBalances(string $userId): array {
         $projects = $this->localProjectService->getLocalProjects($userId);
         $currencyTotals = [];

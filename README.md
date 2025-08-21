@@ -31,6 +31,8 @@ All you need is to install Cospend (>= v1.6.0) and use the
 
 * ✎ Create/edit/delete projects, members, bills, bill categories, currencies
 * ⚖ Check member balances
+* 🌐 View cumulative balances across all your projects
+* 🤝 Create cross-project settlements to settle debts spanning multiple projects
 * 🗠 Display project statistics
 * ♻ Display settlement plan
 * Move bills from one project to another

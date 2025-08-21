@@ -59,7 +59,7 @@
 						<span><strong>{{ t('cospend', 'Type:') }}</strong> {{ settlementTypeOption?.label }}</span>
 						<span><strong>{{ t('cospend', 'Amount:') }}</strong>
 							<span class="payment-direction" :class="{ 'payment-label': settlementAmount > 0, 'receive-label': settlementAmount < 0 }">
-								{{ formatCurrencyWithDirection(isPartialSettlement ? (partialSettlementConfirmed ? totalCustomAmount : partialAmount) : Math.abs(settlementAmount), selectedCurrencyCode, settlementAmount > 0) }}
+								{{ memoizedFormatCurrencyWithDirection(isPartialSettlement ? (partialSettlementConfirmed ? totalCustomAmount : partialAmount) : Math.abs(settlementAmount), selectedCurrencyCode, settlementAmount > 0) }}
 							</span>
 						</span>
 						<div v-if="showConfirmationDialog && confirmationBreakdown.length > 0" class="project-summary">
@@ -68,7 +68,7 @@
 								<div v-for="project in confirmationBreakdown" :key="project.id" class="project-item-summary">
 									<span class="project-name">{{ project.name }}</span>
 									<span class="project-amount" :class="{ 'payment-amount': settlementAmount > 0, 'receive-amount': settlementAmount < 0 }">
-										{{ formatCurrencyWithDirection(project.billAmount, selectedCurrencyCode, settlementAmount > 0) }}
+										{{ memoizedFormatCurrencyWithDirection(project.billAmount, selectedCurrencyCode, settlementAmount > 0) }}
 									</span>
 								</div>
 							</div>
@@ -157,7 +157,7 @@
 							@input="validatePartialAmount">
 						<div v-else class="amount-display">
 							<span class="amount-value" :class="{ 'payment': settlementAmount > 0, 'receive': settlementAmount < 0 }">
-								{{ formatCurrency(Math.abs(settlementAmount), selectedCurrencyCode) }}
+								{{ memoizedFormatCurrency(Math.abs(settlementAmount), selectedCurrencyCode) }}
 							</span>
 						</div>
 					</div>
@@ -203,7 +203,7 @@
 							<!-- Show debt flow info in header -->
 							<div v-if="partialSettlementConfirmed" class="debt-flow-header">
 								<span class="current-debt-header" :class="{ 'payment-debt': settlementAmount > 0, 'receive-debt': settlementAmount < 0 }">
-									{{ formatCurrency(project.originalBalance, selectedCurrencyCode) }}
+									{{ memoizedFormatCurrency(project.originalBalance, selectedCurrencyCode) }}
 								</span>
 								<span class="arrow-header" :aria-label="t('cospend', 'becomes')">→</span>
 								<span :id="`debt-info-${project.id}`"
@@ -214,8 +214,8 @@
 										'payment-remaining': settlementAmount > 0,
 										'receive-remaining': settlementAmount < 0
 									}"
-									:aria-label="remainingDebt(project) <= 0 ? t('cospend', 'Debt will be settled') : t('cospend', 'Remaining debt: {amount}', { amount: formatCurrency(remainingDebt(project), selectedCurrencyCode) })">
-									{{ remainingDebt(project) <= 0 ? t('cospend', 'Settled') : formatCurrency(remainingDebt(project), selectedCurrencyCode) }}
+									:aria-label="remainingDebt(project) <= 0 ? t('cospend', 'Debt will be settled') : t('cospend', 'Remaining debt: {amount}', { amount: memoizedFormatCurrency(remainingDebt(project), selectedCurrencyCode) })">
+									{{ remainingDebt(project) <= 0 ? t('cospend', 'Settled') : memoizedFormatCurrency(remainingDebt(project), selectedCurrencyCode) }}
 								</span>
 							</div>
 						</div>
@@ -224,7 +224,7 @@
 								<span v-if="!partialSettlementConfirmed"
 									class="settlement-amount"
 									:class="{ 'payment-amount': settlementAmount > 0, 'receive-amount': settlementAmount < 0 }">
-									{{ formatCurrency(project.amount, selectedCurrencyCode) }}
+									{{ memoizedFormatCurrency(project.amount, selectedCurrencyCode) }}
 								</span>
 								<!-- Custom amount input when partial settlement is confirmed -->
 								<div v-else class="project-input-container">
@@ -253,7 +253,7 @@
 											class="overpayment-notice-inline">
 											<strong>{{ t('cospend', 'Note:') }}</strong>
 											{{ t('cospend', 'Exceeds original debt of {amount}', {
-												amount: formatCurrency(project.originalBalance, selectedCurrencyCode)
+												amount: memoizedFormatCurrency(project.originalBalance, selectedCurrencyCode)
 											}) }}
 										</span>
 									</div>
@@ -268,7 +268,7 @@
 					<div class="amount-summary">
 						<div class="summary-item">
 							<span class="label">{{ t('cospend', 'Target total:') }}</span>
-							<span class="amount" :class="{ 'payment-amount': settlementAmount > 0, 'receive-amount': settlementAmount < 0 }">{{ formatCurrency(partialAmount, selectedCurrencyCode) }}</span>
+							<span class="amount" :class="{ 'payment-amount': settlementAmount > 0, 'receive-amount': settlementAmount < 0 }">{{ memoizedFormatCurrency(partialAmount, selectedCurrencyCode) }}</span>
 						</div>
 						<div class="summary-item">
 							<span class="label">{{ t('cospend', 'Current total:') }}</span>
@@ -280,7 +280,7 @@
 									'payment-amount': settlementAmount > 0 && hasValidCustomAmounts && totalCustomAmount > 0,
 									'receive-amount': settlementAmount < 0 && hasValidCustomAmounts && totalCustomAmount > 0
 								}">
-								{{ formatCurrency(totalCustomAmount, selectedCurrencyCode) }}
+								{{ memoizedFormatCurrency(totalCustomAmount, selectedCurrencyCode) }}
 							</span>
 						</div>
 					</div>
@@ -347,6 +347,7 @@ import { translate as t } from '@nextcloud/l10n'
 
 // API function to create the actual settlement
 import { createCrossProjectSettlement } from '../network.js'
+import { debounce, memoize } from '../utils.js'
 
 export default {
 	name: 'CrossProjectSettlement',
@@ -411,7 +412,6 @@ export default {
 			isCreatingSettlement: false,
 		}
 	},
-
 	computed: {
 		// ============================================
 		// Currency and Options Processing
@@ -591,12 +591,14 @@ export default {
 		currentSettlementPerson: {
 			handler(newPerson) {
 				if (newPerson && this.availableCurrencies.length > 0) {
+					// Reset all state first to ensure clean slate
+					this.resetAllSettlementState()
+
 					// Set default currency to the first available currency as an object for NcSelect
 					const defaultCurrency = this.availableCurrencies[0]
 					this.selectedCurrency = this.currencyOptions.find(option => option.id === defaultCurrency)
 					// Initialize settlement type option to full settlement
 					this.settlementTypeOption = this.settlementTypeOptions[0] // Full settlement
-					this.resetSettlementState()
 				}
 			},
 			immediate: true,
@@ -628,9 +630,23 @@ export default {
 				this.$nextTick(() => {
 					// This triggers reactivity for the totalCustomAmount computed property
 				})
+				// Call debounced side-effect handler (no-op by default)
+				if (this._debouncedProjectCustomAmountsHandler) {
+					this._debouncedProjectCustomAmountsHandler()
+				}
 			},
 			deep: true,
 		},
+	},
+
+	created() {
+		// Per-component memoized formatters using shared memoize helper
+		this._memoizedFormatCurrency = memoize(this.formatCurrency, (amount, currency) => `${amount}|${typeof currency === 'string' ? currency : currency?.id || currency?.label || 'EUR'}`)
+		this._memoizedFormatCurrencyWithDirection = memoize(this.formatCurrencyWithDirection, (amount, currency, isPayment) => `${amount}|${typeof currency === 'string' ? currency : currency?.id || currency?.label || 'EUR'}|${isPayment ? 'p' : 'r'}`)
+		// Debounced placeholder for project amount side-effects (keeps behaviour unchanged)
+		this._debouncedProjectCustomAmountsHandler = debounce(() => {
+			// Intentionally left empty: reserved for throttled side-effects if needed
+		}, 150)
 	},
 
 	methods: {
@@ -716,16 +732,54 @@ export default {
 			return `${direction} ${currencyCode} ${formatted}`
 		},
 
+		// Thin wrappers that use per-component memoized formatters created in created()
+		memoizedFormatCurrency(amount, currency) {
+			if (this._memoizedFormatCurrency) return this._memoizedFormatCurrency(amount, currency)
+			return this.formatCurrency(amount, currency)
+		},
+
+		memoizedFormatCurrencyWithDirection(amount, currency, isPayment) {
+			if (this._memoizedFormatCurrencyWithDirection) return this._memoizedFormatCurrencyWithDirection(amount, currency, isPayment)
+			return this.formatCurrencyWithDirection(amount, currency, isPayment)
+		},
+
 		// ============================================
 		// State Management and Reset Methods
 		// ============================================
+
+		/**
+		 * Reset all settlement state to initial values
+		 * Called when switching to a different person for settlement
+		 */
+		resetAllSettlementState() {
+			this.isPartialSettlement = false
+			this.partialAmount = 0
+			this.partialSettlementConfirmed = false
+			this.projectCustomAmounts = {}
+			this.showConfirmationDialog = false
+			this.confirmationBreakdown = []
+			this.confirmationTotalAmount = 0
+			this.configurationCollapsed = false
+			this.isCreatingSettlement = false
+			this.selectedCurrency = null
+			this.settlementTypeOption = null
+
+			// Reset to default options when available
+			if (this.availableCurrencies.length > 0) {
+				const defaultCurrency = this.availableCurrencies[0]
+				this.selectedCurrency = this.currencyOptions.find(option => option.id === defaultCurrency)
+			}
+			if (this.settlementTypeOptions && this.settlementTypeOptions.length > 0) {
+				this.settlementTypeOption = this.settlementTypeOptions[0] // Full settlement
+			}
+		},
 
 		/**
 		 * Reset settlement state when switching persons or currencies
 		 * Clears all partial settlement data and custom amounts
 		 * Returns component to default full settlement mode
 		 */
-		resetSettlementState() {
+		resetSettlementConfiguration() {
 			this.isPartialSettlement = false
 			this.partialAmount = 0
 			this.partialSettlementConfirmed = false
@@ -751,7 +805,7 @@ export default {
 		 * Returns to full settlement mode and clears all partial data
 		 */
 		disablePartialSettlement() {
-			this.resetSettlementState()
+			this.resetSettlementConfiguration()
 		},
 
 		/**
@@ -808,6 +862,31 @@ export default {
 		// ============================================
 		// Main Settlement Flow
 		// ============================================
+
+		/**
+		 * Reset all settlement state to initial values
+		 * Used after successful settlement completion
+		 */
+		resetSettlementState() {
+			// Reset all UI state
+			this.showConfirmationDialog = false
+			this.configurationCollapsed = false
+			this.isCreatingSettlement = false
+
+			// Reset settlement type and amounts
+			this.isPartialSettlement = false
+			this.partialAmount = 0
+			this.partialSettlementConfirmed = false
+			this.projectCustomAmounts = {}
+
+			// Reset confirmation data
+			this.confirmationBreakdown = []
+			this.confirmationTotalAmount = 0
+
+			// Reset currency and type selections
+			this.selectedCurrency = null
+			this.settlementTypeOption = null
+		},
 
 		/**
 		 * Cancel settlement and return to previous view
@@ -930,11 +1009,14 @@ export default {
 							: t('cospend', 'Settlement created successfully'),
 				)
 
-				// Close confirmation dialog
-				this.showConfirmationDialog = false
+				// Reset all settlement state after successful completion
+				this.resetSettlementState()
 
-				// Emit event to refresh balances
-				this.$emit('settlement-created')
+				// Extract affected project IDs for balance updates
+				const affectedProjectIds = projectBreakdown.map(project => project.projectId)
+
+				// Emit event to refresh balances with affected project IDs
+				this.$emit('settlement-created', affectedProjectIds)
 				this.cancelSettlement()
 
 			} catch (error) {
@@ -1066,12 +1148,11 @@ export default {
 			grid-template-columns: 1fr 1fr;
 			gap: 20px;
 			align-items: end;
-			margin-bottom: 20px;
+			margin-bottom: 16px;
 
 			@media (max-width: 768px) {
 				grid-template-columns: 1fr;
 				gap: 12px;
-				margin-bottom: 16px;
 			}
 
 			.config-section {
@@ -1295,10 +1376,6 @@ font-size: 14px;
 			display: flex;
 			align-items: center;
 
-			@media (max-width: 768px) {
-				align-items: center; /* Ensure proper alignment on mobile */
-			}
-
 			.amount-input {
 				width: 120px;
 				padding: 8px 12px;
@@ -1414,14 +1491,14 @@ font-size: 14px;
 }
 
 .settlement-actions {
-	margin-top: 32px;
-	margin-bottom: 20px;
+	margin-top: 12px;
+	margin-bottom: 12px;
 
 	.simple-confirmation {
 		display: flex;
 		justify-content: center;
 		gap: 16px;
-		margin-top: 16px;
+		margin-top: 12px;
 
 		@media (max-width: 768px) {
 			flex-direction: column;
@@ -1441,8 +1518,8 @@ font-size: 14px;
 
 /* PROJECT BREAKDOWN PREVIEW - ENHANCED STYLING */
 .project-breakdown-preview {
-	margin-top: 24px;
-	margin-bottom: 24px;
+	margin-top: 12px;
+	margin-bottom: 12px;
 	padding: 16px;
 	background: var(--color-background-hover);
 	border-radius: 8px;
@@ -1464,7 +1541,7 @@ font-size: 14px;
 	.project-list {
 		display: flex;
 		flex-direction: column;
-		gap: 16px; /* Reduced from 20px to be more compact */
+		gap: 16px;
 
 		.project-preview {
 			border: 1px solid var(--color-border);
@@ -1947,7 +2024,7 @@ border: 0;
 }
 
 .settlement-confirmation {
-padding: 20px;
+padding: 12px;
 
 .confirmation-header {
 text-align: center;

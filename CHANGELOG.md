@@ -4,6 +4,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 3.0.12 – 2025-08-21
+
+### Added
+
+- **Cross-project balance aggregation**: View your cumulative balances across all projects in one place
+  - Click on "My cumulative balance" in navigation to see aggregated debt/credit relationships
+  - Currency-specific summaries showing total owed, total owed to you, and net balance
+  - Per-person breakdowns with expandable project-level details
+  - Responsive mobile design
+  - Supports both Nextcloud users (aggregated by userid) and guest users (aggregated by name)
+  - Excludes archived projects from calculations
+
+- **Cross-project settlement system**: Create settlements that span multiple projects
+  - Full settlement: Settle entire outstanding balance across all projects at once
+  - Partial settlement: Set custom amounts with automatic or manual project-level distribution
+  - Real-time validation with overpayment warnings and remaining debt calculations
+  - Confirmation flow with detailed project breakdown preview
+  - Mobile-responsive interface with touch-friendly controls
+  - ARIA labels for Accessibility
+
+### Technical
+
+- New API endpoints: `/api/v1/cross-project-balances` and `/api/v1/cross-project-settlement`
+- Backend balance calculation logic with proper currency handling
+- Vue.js components with reactive state management and error boundaries
+- Extracted reusable utilities (debounce, memoize) for better code organization
+- Error handling and loading states
+- Performance optimizations with memoized currency formatting
+- Shared utility functions for better code maintainability
+
+### Changed
+
+- Grammar corrections: "cumulated" → "cumulative" throughout interface
+- Navigation balance display: Replaced single, cross-currency sum with a multi-currency breakdown that shows up to 3 top currencies
+  - This component now uses a container-based styling approach to facilitate granular styling
+
+### Fixed
+
+- Cross-project settlement: Fixed UI state persistence issue where settlement flow would skip to confirmation screen after completing a settlement with another user
+- Cross-project balances: Improved filtering to prevent display of empty user cards when no balances exist
+- Navigation balance reactivity: Fixed bug where multi-currency balance display in navigation wouldn't update after settlements or bill changes until projects were manually opened. It now displays current balance information immediately after any balance-affecting operations
+
 ## 3.0.11 – 2025-01-28
 
 ### Fixed

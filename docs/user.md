@@ -10,6 +10,8 @@
 * [Create a bill](#s4)
 * [Project statistics](#s5)
 * [Settle the project](#s6)
+* [Cumulative balances across projects](#s7)
+* [Cross-project settlement](#s8)
 
 # <a id='s1' />Introduction
 
@@ -105,3 +107,53 @@ The filters on top of the statistics page apply to all the statistics charts and
 # <a id='s6' />Settle the project
 
 This feature gives you an optimal project settlement/reimbursement plan to put everyone's balance back to 0.
+
+# <a id='s7' />Cumulative balances across projects
+
+The cumulative balance feature allows you to view your total balances across all projects in one place. Click on "My cumulative balance" in the navigation menu to access this feature.
+
+## Multi-currency navigation display
+
+In the navigation sidebar, your cumulative balance is displayed with multi-currency support:
+* **Multiple currencies**: Shows balances for up to 3 currencies, sorted by absolute balance amount
+* **Clean layout**: Each currency is displayed with its code (EUR, USD, ₹, etc.) and colored balance (green for positive, red for negative)  
+* **Overflow indicator**: When you have balances in more than 3 currencies, a "+X more" indicator shows the count of additional currencies
+* **Smart sorting**: Currencies with the highest absolute values are prioritized for display
+
+This view provides:
+* **Currency summaries**: Total amounts you owe, total amounts owed to you, and net balance for each currency
+* **Per-person breakdown**: See your relationship with each person across all projects
+* **Project details**: Expandable view showing which specific projects contribute to each balance
+* **Automatic aggregation**: Balances are automatically combined for Nextcloud users (by user ID) and guest users (by name)
+
+Note: Only active (non-archived) projects are included in the cumulative calculations.
+
+# <a id='s8' />Cross-project settlement
+
+Cross-project settlements allow you to create settlements that span multiple projects, making it easy to settle complex debts that exist across different projects.
+
+## How to create a cross-project settlement
+
+1. **Access cumulative balances**: Go to "Cumulative balances" in the navigation
+2. **Select a person**: Click the "Settle" button next to the person you want to settle with
+3. **Choose settlement type**:
+   * **Full settlement**: Settle the entire outstanding balance across all projects
+   * **Partial settlement**: Set a custom amount to settle partially
+4. **Configure the settlement**:
+   * For partial settlements, you can distribute the amount across projects automatically or manually
+   * Review the project breakdown to see how the settlement will be applied
+5. **Confirm**: Review the settlement details and confirm to create the settlement
+
+## Settlement types
+
+**Full Settlement**: 
+* Settles the entire outstanding balance between you and the other person
+* Automatically calculates the optimal distribution across all relevant projects
+
+**Partial Settlement**:
+* Allows you to specify a custom settlement amount
+* Provides automatic distribution of the amount across projects based on individual balances
+* Includes manual override options for fine-tuned control
+* Shows remaining debt after settlement
+
+The settlement system provides real-time validation, overpayment warnings, and detailed breakdowns to ensure accurate settlements across your project ecosystem.

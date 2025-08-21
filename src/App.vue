@@ -209,16 +209,20 @@ import NcEmptyContent from '@nextcloud/vue/dist/Components/NcEmptyContent.js'
 import NcContent from '@nextcloud/vue/dist/Components/NcContent.js'
 import NcAppContent from '@nextcloud/vue/dist/Components/NcAppContent.js'
 
-import Statistics from './components/statistics/Statistics.vue'
-import Settlement from './Settlement.vue'
-import CrossProjectBalanceView from './components/CrossProjectBalanceView.vue'
-import CrossProjectSettlement from './components/CrossProjectSettlement.vue'
+// Direct imports for components that are always needed
 import CospendNavigation from './components/CospendNavigation.vue'
 import CospendSettingsDialog from './components/CospendSettingsDialog.vue'
 import BillForm from './BillForm.vue'
 import BillList from './BillList.vue'
 import Sidebar from './components/Sidebar.vue'
-import MoveToProjectList from './components/MoveToProjectList.vue'
+
+// Lazy load heavy components that aren't always needed to improve initial bundle size
+const Statistics = () => import('./components/statistics/Statistics.vue')
+const Settlement = () => import('./Settlement.vue')
+// Lazy load cross-project components since they're heavy and not always used
+const CrossProjectBalanceView = () => import('./components/CrossProjectBalanceView.vue')
+const CrossProjectSettlement = () => import('./components/CrossProjectSettlement.vue')
+const MoveToProjectList = () => import('./components/MoveToProjectList.vue')
 // const Statistics = () => import('./components/statistics/Statistics.vue')
 // const Settlement = () => import('./Settlement.vue')
 // const CospendNavigation = () => import('./components/CospendNavigation.vue')
@@ -780,10 +784,34 @@ export default {
 			this.currentSettlementData = null
 		},
 		/**
-		 * Handle settlement creation completion
+		 * Handle settlement creation completion for cross-project settlements
+		 *
+		 * This method ensures that after a cross-project settlement is created,
+		 * all relevant UI components are updated to reflect the new balance state.
+		 *
+		 * @param {Array} affectedProjectIds - Array of project IDs that were affected by the settlement
 		 */
-		onSettlementCreated() {
-			// Refresh balance data to show updated balances
+		onSettlementCreated(affectedProjectIds = []) {
+			// Update balance information for all affected projects to ensure navigation displays current data
+			// This is crucial because the navigation's cumulative balance display needs to reflect
+			// the updated member balances immediately after settlement
+			if (affectedProjectIds && affectedProjectIds.length > 0) {
+				affectedProjectIds.forEach(projectId => {
+					if (this.projects[projectId]) {
+						// Refresh project member data from server to get updated balances
+						this.updateProjectInfo(projectId)
+					}
+				})
+			} else {
+				// Fallback: update all projects if no specific project IDs provided
+				// Less efficient but ensures data consistency when settlement scope is unclear
+				Object.keys(this.projects).forEach(projectId => {
+					this.updateProjectInfo(projectId)
+				})
+			}
+
+			// Refresh the cross-project balance view to show updated balance calculations
+			// This ensures the balance aggregation reflects the settlement that was just created
 			if (this.$refs.crossProjectBalanceView) {
 				this.$refs.crossProjectBalanceView.loadBalances()
 			}
@@ -874,6 +902,10 @@ export default {
 		},
 		onAutoSettled(projectId) {
 			this.getBills(projectId)
+			// Ensure member balance information is updated after settlement
+			// This is critical for the navigation's cumulative balance display to remain accurate
+			// after automatic settlements created via the settlement plan feature
+			this.updateProjectInfo(projectId)
 		},
 		onMoveBillClicked(bill) {
 			if (this.isBillMovable(bill)) {

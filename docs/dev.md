@@ -28,4 +28,20 @@ So the only differences between IHateMoney API and Cospend API are :
 
 That's it.
 
+## New API Endpoints
+
+Recent additions to the Cospend API include cross-project functionality:
+
+### Cross-Project Balances
+* **GET** `/api/v1/cross-project-balances` - Retrieve cumulative balances across all user's projects
+  * Returns aggregated balance data by person and currency
+  * Excludes archived projects from calculations
+  * Supports both Nextcloud users (aggregated by userid) and guest users (aggregated by name)
+
+### Cross-Project Settlement
+* **POST** `/api/v1/cross-project-settlement` - Create settlements spanning multiple projects
+  * Supports both full and partial settlement modes
+  * Handles automatic distribution of settlement amounts across projects
+  * Includes validation and conflict resolution for overpayments
+
 Detailed API description will come later.

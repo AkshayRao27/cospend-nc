@@ -71,7 +71,7 @@
 					<!-- Clickable item showing user's cumulative balance across all projects -->
 					<!-- When clicked, triggers the cross-project balance view -->
 					<NcAppNavigationItem v-if="!pageIsPublic && showMyBalance && myBalance !== null"
-						:name="t('cospend', 'My cumulated balance')"
+						:name="t('cospend', 'My cumulative balance')"
 						@click="showCrossProjectBalanceView">
 						<template #icon>
 							<ColoredAvatar :user="currentUserId" />

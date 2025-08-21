@@ -624,3 +624,19 @@ export function getCrossProjectBalances() {
 	const url = generateOcsUrl('/apps/cospend/api/v1/cross-project-balances')
 	return axios.get(url)
 }
+
+/**
+ * Create cross-project settlement bills
+ * This creates reimbursement bills across multiple projects to settle balances between users
+ * @param {object} settlementData Settlement configuration
+ * @param {string} settlementData.targetUserId ID of the user to settle with
+ * @param {string} settlementData.targetUserName Name of the user to settle with
+ * @param {string} settlementData.currency Currency for settlement
+ * @param {number} settlementData.totalAmount Total amount to settle
+ * @param {boolean} settlementData.isPayment True if current user is paying, false if receiving
+ * @param {Array} settlementData.projectBreakdown Array of project breakdown objects
+ */
+export function createCrossProjectSettlement(settlementData) {
+	const url = generateOcsUrl('/apps/cospend/api/v1/cross-project-settlement')
+	return axios.post(url, settlementData)
+}

@@ -64,7 +64,6 @@ export function memoize(fn, keyFn) {
 
 export function importCospendProject(importBeginCallback, importSuccessCallback, importEndCallback) {
 	const picker = getFilePickerBuilder(t('cospend', 'Choose csv project file'))
-
 		.setMultiSelect(false)
 		.setType(FilePickerType.Choose)
 		.addMimeTypeFilter('text/csv')

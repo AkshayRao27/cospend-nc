@@ -90,7 +90,7 @@ class CospendProvider implements IProvider {
 			$params = [
 				'user' => [
 					'type' => 'user',
-					'id' => 0,
+					'id' => '0',
 					'name' => $subjectParams['author']
 				],
 			];
@@ -148,6 +148,9 @@ class CospendProvider implements IProvider {
 		$params = $this->parseParamForProject('project', $subjectParams, $params);
 		$params = $this->parseParamForBill('bill', $subjectParams, $params);
 		$params = $this->parseParamForWho($subjectParams, $params);
+
+		// hack to get the activity type in the frontend
+		$event->setLink($subjectIdentifier);
 
 		try {
 			$subject = $this->activityManager->getActivityFormat($subjectIdentifier, $subjectParams, $ownActivity);
@@ -237,7 +240,9 @@ class CospendProvider implements IProvider {
 			$params[$paramName] = [
 				'type' => 'highlight',
 				'id' => (string)$subjectParams[$paramName]['id'],
-				'name' => $subjectParams[$paramName]['name'] . ' (' . $subjectParams[$paramName]['amount'] . ')',
+				'name' => isset($subjectParams['project']['currency_name'])
+					? $subjectParams[$paramName]['name'] . ' (' . $subjectParams[$paramName]['amount'] . ' ' . $subjectParams['project']['currency_name'] . ')'
+					: $subjectParams[$paramName]['name'] . ' (' . $subjectParams[$paramName]['amount'] . ')',
 				'link' => $this->urlGenerator->linkToRouteAbsolute('cospend.page.indexBill', [
 					'projectId' => $subjectParams['project']['id'],
 					'billId' => $subjectParams[$paramName]['id'],

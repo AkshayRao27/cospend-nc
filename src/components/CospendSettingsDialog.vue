@@ -22,10 +22,10 @@
 <template>
 	<div id="settings-container">
 		<NcAppSettingsDialog
+			v-model:open="showSettings"
 			class="cospend-settings-dialog"
 			:name="t('cospend', 'Cospend settings')"
 			:title="t('cospend', 'Cospend settings')"
-			:open.sync="showSettings"
 			:show-navigation="true"
 			container="#settings-container">
 			<NcAppSettingsSection
@@ -275,9 +275,14 @@
 					{{ t('cospend', 'Do you want to see and choose time in bill dates?') }}
 				</h3>
 				<NcCheckboxRadioSwitch
-					:checked.sync="useTime"
-					@update:checked="onCheckboxChange($event, 'useTime')">
+					v-model="useTime"
+					@update:model-value="onCheckboxChange($event, 'useTime')">
 					{{ t('cospend', 'Use time in dates') }}
+				</NcCheckboxRadioSwitch>
+				<NcCheckboxRadioSwitch
+					v-model="showMyBalance"
+					@update:model-value="onCheckboxChange($event, 'showMyBalance')">
+					{{ t('cospend', 'Show my cumulated balance') }}
 				</NcCheckboxRadioSwitch>
 			</NcAppSettingsSection>
 		</NcAppSettingsDialog>
@@ -288,15 +293,14 @@
 import OpenInNewIcon from 'vue-material-design-icons/OpenInNew.vue'
 import FileImportIcon from 'vue-material-design-icons/FileImport.vue'
 
-import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
-import NcAppSettingsDialog from '@nextcloud/vue/dist/Components/NcAppSettingsDialog.js'
-import NcAppSettingsSection from '@nextcloud/vue/dist/Components/NcAppSettingsSection.js'
-import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
-import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
+import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
+import NcAppSettingsDialog from '@nextcloud/vue/components/NcAppSettingsDialog'
+import NcAppSettingsSection from '@nextcloud/vue/components/NcAppSettingsSection'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 
 import { subscribe, unsubscribe, emit } from '@nextcloud/event-bus'
 import { getFilePickerBuilder, FilePickerType, showSuccess } from '@nextcloud/dialogs'
-import cospend from '../state.js'
 import { importCospendProject, importSWProject } from '../utils.js'
 
 export default {
@@ -315,26 +319,27 @@ export default {
 	data() {
 		return {
 			showSettings: false,
-			outputDir: cospend.outputDirectory || '/',
-			pageIsPublic: cospend.pageIsPublic,
-			sortOrder: cospend.sortOrder || 'name',
-			memberOrder: cospend.memberOrder || 'name',
-			maxPrecision: cospend.maxPrecision || 2,
-			useTime: cospend.useTime ?? true,
-			showMyBalance: cospend.showMyBalance ?? false,
+			cospend: OCA.Cospend.state,
+			outputDir: OCA.Cospend.state.outputDirectory || '/',
+			pageIsPublic: OCA.Cospend.state.pageIsPublic,
+			sortOrder: OCA.Cospend.state.sortOrder || 'name',
+			memberOrder: OCA.Cospend.state.memberOrder || 'name',
+			maxPrecision: OCA.Cospend.state.maxPrecision || 2,
+			useTime: OCA.Cospend.state.useTime ?? true,
+			showMyBalance: OCA.Cospend.state.showMyBalance ?? false,
 			// Cross-project balance display settings:
 			// Convert boolean showSummaryFirst to dropdown-friendly string value
-			displayOrder: cospend.showSummaryFirst ? 'summary' : 'people',
+			displayOrder: OCA.Cospend.state.showSummaryFirst ? 'summary' : 'people',
 			// Store the actual boolean value for direct cospend state updates
-			hideProjectsByDefault: cospend.hideProjectsByDefault ?? true,
+			hideProjectsByDefault: OCA.Cospend.state.hideProjectsByDefault ?? true,
 			// Convert boolean hideProjectsByDefault to dropdown-friendly string value
 			// This allows for intuitive dropdown selection (show/hide) instead of boolean checkbox
-			hideProjectsVisibility: (cospend.hideProjectsByDefault ?? true) ? 'hide' : 'show',
+			hideProjectsVisibility: (OCA.Cospend.state.hideProjectsByDefault ?? true) ? 'hide' : 'show',
 			// Cumulative balance sort settings
-			personSortBy: cospend.personSortBy || 'balance',
-			personSortOrder: cospend.personSortOrder || 'desc',
-			summarySortBy: cospend.summarySortBy || 'amount',
-			summarySortOrder: cospend.summarySortOrder || 'desc',
+			personSortBy: OCA.Cospend.state.personSortBy || 'balance',
+			personSortOrder: OCA.Cospend.state.personSortOrder || 'desc',
+			summarySortBy: OCA.Cospend.state.summarySortBy || 'amount',
+			summarySortOrder: OCA.Cospend.state.summarySortOrder || 'desc',
 			importingProject: false,
 			importingSWProject: false,
 			cospendVersion: OC.getCapabilities()?.cospend?.version || '??',
@@ -367,8 +372,8 @@ export default {
 		handleShowSettings() {
 			this.showSettings = true
 			// Refresh values from cospend state when dialog opens
-			this.displayOrder = cospend.showSummaryFirst ? 'summary' : 'people'
-			this.hideProjectsVisibility = cospend.hideProjectsByDefault ? 'hide' : 'show'
+			this.displayOrder = this.cospend.showSummaryFirst ? 'summary' : 'people'
+			this.hideProjectsVisibility = this.cospend.hideProjectsByDefault ? 'hide' : 'show'
 		},
 
 		onOutputDirClick() {
@@ -378,40 +383,57 @@ export default {
 				.addMimeTypeFilter('httpd/unix-directory')
 				.allowDirectories()
 				.startAt(this.outputDir)
+				.addButton({
+					label: t('cospend', 'Pick current directory'),
+					variant: 'primary',
+					callback: (nodes) => {
+						const node = nodes[0]
+						let path = node.path
+						if (path === '') {
+							path = '/'
+						}
+						path = path.replace(/^\/+/, '/')
+						this.outputDir = path
+						emit('save-option', { key: 'outputDirectory', value: path })
+					},
+				})
 				.build()
 			picker.pick()
-				.then(async (path) => {
-					if (path === '') {
-						path = '/'
-					}
-					path = path.replace(/^\/+/, '/')
-					this.outputDir = path
-					emit('save-option', { key: 'outputDirectory', value: path })
-				})
+			/*
+			.then(async (path) => {
+				console.debug('aaaaaaaaaaaaa', path)
+				if (path === '') {
+					path = '/'
+				}
+				path = path.replace(/^\/+/, '/')
+				this.outputDir = path
+				emit('save-option', { key: 'outputDirectory', value: path })
+			})
+			*/
 		},
 		onSortOrderChange() {
 			emit('save-option', { key: 'sortOrder', value: this.sortOrder })
-			cospend.sortOrder = this.sortOrder
+			this.cospend.sortOrder = this.sortOrder
 		},
 		onMemberOrderChange() {
 			emit('save-option', { key: 'memberOrder', value: this.memberOrder })
-			cospend.memberOrder = this.memberOrder
+			this.cospend.memberOrder = this.memberOrder
 		},
 		onMaxPrecisionChange() {
 			emit('save-option', { key: 'maxPrecision', value: this.maxPrecision })
-			cospend.maxPrecision = this.maxPrecision
+			this.cospend.maxPrecision = this.maxPrecision
 			this.$emit('update-max-precision')
 		},
 		onCheckboxChange(checked, key) {
 			emit('save-option', { key, value: checked ? '1' : '0' })
-			cospend[key] = checked
+			this.cospend[key] = checked
 		},
 		onDisplayOrderChange() {
 			// Convert dropdown selection to boolean for cospend state
 			// 'summary' = true (show summary first), 'people' = false (show people first)
 			const showSummaryFirst = this.displayOrder === 'summary'
 			emit('save-option', { key: 'showSummaryFirst', value: showSummaryFirst ? '1' : '0' })
-			cospend.showSummaryFirst = showSummaryFirst
+			this.cospend.showSummaryFirst = showSummaryFirst
 		},
 		onHideProjectsChange() {
 			// Convert dropdown selection to boolean for project details visibility
@@ -422,23 +444,23 @@ export default {
 			// Persist setting to server (as string '1'/'0' for database storage)
 			emit('save-option', { key: 'hideProjectsByDefault', value: hideProjectsByDefault ? '1' : '0' })
 			// Update global cospend state immediately for reactive UI updates
-			cospend.hideProjectsByDefault = hideProjectsByDefault
+			this.cospend.hideProjectsByDefault = hideProjectsByDefault
 		},
 		onPersonSortChange() {
 			// Save person sort settings
 			emit('save-option', { key: 'personSortBy', value: this.personSortBy })
 			emit('save-option', { key: 'personSortOrder', value: this.personSortOrder })
 			// Update global cospend state
-			cospend.personSortBy = this.personSortBy
-			cospend.personSortOrder = this.personSortOrder
+			this.cospend.personSortBy = this.personSortBy
+			this.cospend.personSortOrder = this.personSortOrder
 		},
 		onSummarySortChange() {
 			// Save summary sort settings
 			emit('save-option', { key: 'summarySortBy', value: this.summarySortBy })
 			emit('save-option', { key: 'summarySortOrder', value: this.summarySortOrder })
 			// Update global cospend state
-			cospend.summarySortBy = this.summarySortBy
-			cospend.summarySortOrder = this.summarySortOrder
+			this.cospend.summarySortBy = this.summarySortBy
+			this.cospend.summarySortOrder = this.summarySortOrder
 		},
 		onImportClick() {
 			importCospendProject(() => {
@@ -560,7 +582,7 @@ a.external {
 	}
 }
 
-::v-deep .cospend-settings-dialog .modal-container {
+:deep(.cospend-settings-dialog .modal-container) {
 	display: flex !important;
 }
 </style>

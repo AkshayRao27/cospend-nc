@@ -1,6 +1,6 @@
 import * as constants from './constants.js'
 
-const cospend = {
+export const defaultState = {
 	restoredCurrentProjectId: null,
 	restoredCurrentBillId: null,
 	currentProjectId: null,
@@ -35,5 +35,3 @@ const cospend = {
 	summarySortBy: 'amount', // 'amount', 'currency'
 	summarySortOrder: 'desc', // 'asc', 'desc'
 }
-
-export default cospend

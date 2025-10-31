@@ -23,6 +23,7 @@ const cospend = {
 	useTime: true,
 	activity_enabled: false,
 	showMyBalance: false,
+	hideOwnBalance: false, // Hide current user's balance display in member lists
 	// Cross-project balance display settings
 	// Controls whether Summary section appears before People section in CrossProjectBalanceView
 	showSummaryFirst: true,

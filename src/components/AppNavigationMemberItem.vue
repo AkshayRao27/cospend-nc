@@ -36,7 +36,7 @@
 				:force-is-no-user="project.federated"
 				:show-user-status="true" />
 		</div>
-		<template v-if="inNavigation"
+		<template v-if="inNavigation && !shouldHideBalance"
 			#counter>
 			<NcCounterBubble class="balance">
 				<span :class="balanceClass">{{ balanceCounter }}</span>
@@ -248,6 +248,14 @@ export default {
 		memberVisible() {
 			const balance = this.member.balance
 			return (balance >= 0.01 || balance <= -0.01 || this.member.activated)
+		},
+		shouldHideBalance() {
+			// Hide balance if setting is enabled AND this member is the current user
+			if (!cospend.hideOwnBalance) {
+				return false
+			}
+			const currentUser = getCurrentUser()
+			return this.member.userid === currentUser.uid
 		},
 	},
 

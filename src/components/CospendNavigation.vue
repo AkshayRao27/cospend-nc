@@ -70,16 +70,23 @@
 					<!-- Cross-project balance navigation item (GitHub issue #281) -->
 					<!-- Clickable item showing user's cumulative balance across all projects -->
 					<!-- When clicked, triggers the cross-project balance view -->
-					<NcAppNavigationItem v-if="!pageIsPublic && showMyBalance && myBalance !== null"
-						:name="t('cospend', 'My cumulative balance')"
+					<NcAppNavigationItem v-if="!pageIsPublic && showMyBalance && myBalanceByCurrency && Object.keys(myBalanceByCurrency).length > 0"
+						:name="t('cospend', 'Cumulative Balance')"
 						@click="showCrossProjectBalanceView">
 						<template #icon>
 							<ColoredAvatar :user="currentUserId" />
 						</template>
-						<template #counter>
-							<NcCounterBubble>
-								<span :class="balanceClass">{{ myBalance }}</span>
-							</NcCounterBubble>
+						<template #extra>
+							<div class="balance-chips">
+								<div v-for="(amount, currency) in myBalanceByCurrency"
+									:key="currency"
+									class="balance-item">
+									<span class="currency-chip">{{ currency }}</span>
+									<span :class="getBalanceClass(amount)">
+										{{ formatBalanceAmount(amount) }}
+									</span>
+								</div>
+							</div>
 						</template>
 					</NcAppNavigationItem>
 					<NcAppNavigationItem v-if="!pageIsPublic && pendingInvitations.length > 0"
@@ -227,21 +234,24 @@ export default {
 		showMyBalance() {
 			return cospend.showMyBalance
 		},
-		myBalance() {
-			return Object.values(this.projects)
+		myBalanceByCurrency() {
+			// Group balances by currency across all non-archived projects
+			const balancesByCurrency = {}
+			
+			Object.values(this.projects)
 				.filter(p => p.archived_ts === null)
-				.map(p => {
-					const me = p.members.find(m => m.userid === this.currentUserId)
-					return me ? me.balance : null
+				.forEach(project => {
+					const me = project.members.find(m => m.userid === this.currentUserId)
+					if (me && me.balance !== null && me.balance !== undefined) {
+						const currency = project.currencyname || 'EUR'
+						if (!balancesByCurrency[currency]) {
+							balancesByCurrency[currency] = 0
+						}
+						balancesByCurrency[currency] += me.balance
+					}
 				})
-				.filter(b => b !== null)
-				.reduce((acc, balance) => acc + balance, 0)
-		},
-		balanceClass() {
-			return {
-				balancePositive: this.myBalance >= 0.01,
-				balanceNegative: this.myBalance <= -0.01,
-			}
+			
+			return balancesByCurrency
 		},
 		filteredProjectIds() {
 			const projectIds = this.showArchivedProjects ? this.archivedProjectIds : this.nonArchivedProjectIds
@@ -314,6 +324,38 @@ export default {
 			}
 		},
 		/**
+		 * Format balance amount only (without currency)
+		 * @param {number} amount - The balance amount
+		 * @return {string} Formatted amount
+		 */
+		formatBalanceAmount(amount) {
+			return new Intl.NumberFormat(navigator.language, {
+				minimumFractionDigits: 2,
+				maximumFractionDigits: 2,
+			}).format(Math.abs(amount))
+		},
+		/**
+		 * Get CSS class for balance text color
+		 * @param {number} amount - The balance amount
+		 * @return {object} Class object for Vue binding
+		 */
+		getBalanceClass(amount) {
+			return {
+				'balance-positive': amount >= 0.01,
+				'balance-negative': amount <= -0.01,
+			}
+		},
+		/**
+		 * Get NcCounterBubble type based on balance amount
+		 * @param {number} amount - The balance amount
+		 * @return {string} Type for NcCounterBubble ('success', 'error', or undefined)
+		 */
+		getBalanceType(amount) {
+			if (amount >= 0.01) return 'success'
+			if (amount <= -0.01) return 'error'
+			return undefined
+		},
+		/**
 		 * Show cross-project balance view
 		 *
 		 * Emits event to trigger display of cross-project balance aggregation view.
@@ -331,5 +373,83 @@ export default {
 </script>
 
 <style scoped lang="scss">
-// nothing
+// Properly center the navigation entry vertically
+:deep(.app-navigation-entry-wrapper) {
+	display: flex !important;
+	align-items: center !important;
+}
+
+:deep(.app-navigation-entry) {
+	display: flex !important;
+	align-items: center !important;
+	width: 100% !important;
+	gap: 0 !important;
+}
+
+:deep(.app-navigation-entry__anchor) {
+	display: flex !important;
+	align-items: center !important;
+	flex: 1 !important;
+	gap: 12px !important;
+}
+
+:deep(.app-navigation-entry__name) {
+	white-space: nowrap !important;
+	overflow: hidden !important;
+	text-overflow: ellipsis !important;
+}
+
+:deep(.app-navigation-entry__utils) {
+	display: flex !important;
+	align-items: center !important;
+	justify-content: flex-end !important;
+}
+
+.balance-chips {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	align-items: flex-end;
+}
+
+.balance-item {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+
+	.currency-chip {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		background: var(--color-background-dark);
+		color: var(--color-main-text);
+		padding: 1px 0;
+		min-width: 32px;
+		width: 32px;
+		border-radius: 3px;
+		font-size: 10px;
+		font-weight: 700;
+		line-height: 1.6;
+		white-space: nowrap;
+		text-transform: uppercase;
+		text-align: center;
+	}
+
+	> span:not(.currency-chip) {
+		font-family: var(--font-face);
+		font-weight: 600;
+		font-size: 14px;
+		font-variant-numeric: tabular-nums;
+		min-width: 50px;
+		text-align: right;
+	}
+}
+
+.balance-positive {
+	color: var(--color-success);
+}
+
+.balance-negative {
+	color: var(--color-error);
+}
 </style>

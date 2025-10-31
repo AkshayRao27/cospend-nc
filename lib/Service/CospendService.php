@@ -1321,16 +1321,34 @@ class CospendService {
      * Create cross-project settlement bills
      * 
      * Creates reimbursement bills across multiple projects to settle balances between users.
-     * Bills are distributed proportionally across projects based on the breakdown provided.
+     * Bills are distributed across projects based on the breakdown provided.
      * 
-     * @param string $currentUserId Current user's ID
-     * @param string $targetUserId Target user's ID 
-     * @param string $targetUserName Target user's name
-     * @param string $currency Currency for settlement
-     * @param float $totalAmount Total settlement amount
-     * @param bool $isPayment True if current user is paying, false if receiving
-     * @param array $projectBreakdown Array of project breakdown with amounts
-     * @throws CospendBasicException If settlement creation fails
+     * Process:
+     * 1. Validates input parameters (no empty projects, positive amount)
+     * 2. Checks current user has access to each project
+     * 3. Finds members in each project for both users
+     * 4. Validates optional fields (timestamp, paymentModeId, comment)
+     * 5. Creates reimbursement bills in each project with optional fields
+     * 
+     * @param string $currentUserId Current user's Nextcloud ID
+     * @param string $targetUserId Target user's Nextcloud ID (may be local-only member in some projects)
+     * @param string $targetUserName Target user's display name
+     * @param string $currency Currency code for settlement (e.g., 'EUR', 'USD')
+     * @param float $totalAmount Total amount being settled (must be > 0)
+     * @param bool $isPayment True if current user is paying the target, false if receiving
+     * @param array $projectBreakdown Array of project objects:
+     *   Each object contains:
+     *   - 'projectId' (string): Project identifier
+     *   - 'billAmount' (float): Amount to settle in this project (must be >= 0.01)
+     *   - 'timestamp' (int, optional): Unix timestamp for the settlement bill
+     *   - 'paymentModeId' (int, optional): Payment mode ID from project settings
+     *   - 'comment' (string, optional): Bill comment (max 300 characters)
+     * 
+     * @throws CospendBasicException If validation fails or bill creation fails
+     *   - 400: Invalid input (empty projects, invalid amount, validation errors)
+     *   - 403: Access denied to project
+     * 
+     * @return void
      * 
      * @since 1.6.0 Added for cross-project settlement feature
      */
@@ -1358,6 +1376,7 @@ class CospendService {
         $currentUserName = $currentUserId; // Fallback to user ID
         $timestamp = (new \DateTime())->getTimestamp();
 
+        $billsCreated = 0;
         foreach ($projectBreakdown as $projectInfo) {
             $projectId = $projectInfo['projectId'];
             $billAmount = $projectInfo['billAmount'];
@@ -1383,13 +1402,20 @@ class CospendService {
                         $currentUserMember = $member;
                         $currentUserName = $member['name'];
                     }
-                    if ($member['userid'] === $targetUserId) {
+                    // Match target user by userid OR by name if userid is not set
+                    if ($member['userid'] === $targetUserId || 
+                        ($member['userid'] === null && $member['name'] === $targetUserName)) {
                         $targetUserMember = $member;
                     }
                 }
 
-                if (!$currentUserMember || !$targetUserMember) {
-                    // Skip this project if either user is not a member
+                if (!$currentUserMember) {
+                    // Skip if current user is not a member of this project
+                    continue;
+                }
+
+                if (!$targetUserMember) {
+                    // Skip if target user/member is not found in this project
                     continue;
                 }
 
@@ -1406,22 +1432,69 @@ class CospendService {
                     $billTitle = "{$targetUserName} → {$currentUserName}";
                 }
 
+                // Extract optional fields from project breakdown
+                $billTimestamp = isset($projectInfo['timestamp']) ? $projectInfo['timestamp'] : $timestamp;
+                $paymentModeId = isset($projectInfo['paymentModeId']) ? $projectInfo['paymentModeId'] : null;
+                $comment = isset($projectInfo['comment']) ? $projectInfo['comment'] : null;
+
+                // Validate optional fields
+                if ($billTimestamp !== null && !is_numeric($billTimestamp)) {
+                    throw new CospendBasicException(
+                        '',
+                        400,
+                        ['message' => "Invalid timestamp for project {$projectId}"]
+                    );
+                }
+
+                if ($comment !== null && strlen($comment) > 300) {
+                    throw new CospendBasicException(
+                        '',
+                        400,
+                        ['message' => "Comment too long for project {$projectId} (max 300 characters)"]
+                    );
+                }
+
+                if ($paymentModeId !== null && !is_numeric($paymentModeId)) {
+                    throw new CospendBasicException(
+                        '',
+                        400,
+                        ['message' => "Invalid payment mode ID for project {$projectId}"]
+                    );
+                }
+
                 // Create reimbursement bill using existing bill creation logic
-                $this->localProjectService->createBill(
+                // createBill signature: ($projectId, $date, $what, $payer, $payedFor, $amount, $repeat, 
+                //                        $paymentMode=null, $paymentModeId=null, $categoryId=null, 
+                //                        $repeatAllActive=0, $repeatUntil=null, $timestamp=null, $comment=null)
+                $billId = $this->localProjectService->createBill(
                     $projectId,
-                    null, // bill ID (null for new)
-                    $billTitle,
-                    $payerId,
-                    $owerId,
-                    $billAmount,
-                    Application::FREQUENCY_NO, // no repeat
-                    'n', // no repeat
-                    0, // no repeat
-                    Application::CATEGORY_REIMBURSEMENT, // reimbursement category
-                    0, // no category color
-                    null, // no payment mode
-                    $timestamp
+                    null, // date (null, we use timestamp)
+                    $billTitle, // what (bill title)
+                    $payerId, // payer member ID
+                    (string)$owerId, // payedFor (ower as string)
+                    $billAmount, // amount
+                    Application::FREQUENCY_NO, // repeat frequency
+                    null, // paymentMode (deprecated, use paymentModeId)
+                    $paymentModeId, // paymentModeId
+                    Application::CATEGORY_REIMBURSEMENT, // categoryId (reimbursement)
+                    0, // repeatAllActive
+                    null, // repeatUntil
+                    $billTimestamp, // timestamp
+                    $comment, // comment
+                    null, // repeatFreq
+                    0, // deleted
+                    true // produceActivity - generate activity for the bill
                 );
+
+                if (!$billId || $billId <= 0) {
+                    throw new CospendBasicException(
+                        '',
+                        400,
+                        ['message' => "Failed to create bill in project {$projectId}: createBill returned invalid ID"]
+                    );
+                }
+
+                $billsCreated++;
 
             } catch (\Exception $e) {
                 throw new CospendBasicException(

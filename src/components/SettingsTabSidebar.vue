@@ -264,19 +264,19 @@ export default {
 			return this.project.myaccesslevel
 		},
 		members() {
-			return cospend.members[this.projectId]
+			return cospend.members[this.projectId] || {}
 		},
 		memberList() {
-			return this.project.members
+			return this.project?.members || []
 		},
 		sortedMembers() {
-			return getSortedMembers(this.memberList, cospend.memberOrder)
+			return getSortedMembers(this.memberList || [], cospend.memberOrder)
 		},
 		activeMembers() {
-			return this.memberList.filter((member) => { return member.activated })
+			return (this.memberList || []).filter((member) => { return member.activated })
 		},
 		firstMid() {
-			return this.activeMembers[0].id
+			return (this.activeMembers && this.activeMembers[0]) ? this.activeMembers[0].id : null
 		},
 		projectId() {
 			return this.project.id

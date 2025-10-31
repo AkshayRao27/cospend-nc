@@ -279,6 +279,14 @@
 					@update:checked="onCheckboxChange($event, 'useTime')">
 					{{ t('cospend', 'Use time in dates') }}
 				</NcCheckboxRadioSwitch>
+				<h3 class="app-settings-section__hint">
+					{{ t('cospend', 'Hide your own balance in project member lists?') }}
+				</h3>
+				<NcCheckboxRadioSwitch
+					:checked.sync="hideOwnBalance"
+					@update:checked="onCheckboxChange($event, 'hideOwnBalance')">
+					{{ t('cospend', 'Hide my balance') }}
+				</NcCheckboxRadioSwitch>
 			</NcAppSettingsSection>
 		</NcAppSettingsDialog>
 	</div>
@@ -322,6 +330,7 @@ export default {
 			maxPrecision: cospend.maxPrecision || 2,
 			useTime: cospend.useTime ?? true,
 			showMyBalance: cospend.showMyBalance ?? false,
+			hideOwnBalance: cospend.hideOwnBalance ?? false,
 			// Cross-project balance display settings:
 			// Convert boolean showSummaryFirst to dropdown-friendly string value
 			displayOrder: cospend.showSummaryFirst ? 'summary' : 'people',
@@ -353,6 +362,9 @@ export default {
 		'cospend.hideProjectsByDefault'(newValue) {
 			this.hideProjectsVisibility = newValue ? 'hide' : 'show'
 		},
+		'cospend.hideOwnBalance'(newValue) {
+			this.hideOwnBalance = newValue
+		},
 	},
 
 	mounted() {
@@ -369,6 +381,7 @@ export default {
 			// Refresh values from cospend state when dialog opens
 			this.displayOrder = cospend.showSummaryFirst ? 'summary' : 'people'
 			this.hideProjectsVisibility = cospend.hideProjectsByDefault ? 'hide' : 'show'
+			this.hideOwnBalance = cospend.hideOwnBalance ?? false
 		},
 
 		onOutputDirClick() {

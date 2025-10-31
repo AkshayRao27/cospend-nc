@@ -198,7 +198,7 @@ export default {
 
 	computed: {
 		project() {
-			return cospend.projects[this.projectId]
+			return cospend.projects[this.projectId] || {}
 		},
 		sortOrderLabel() {
 			return this.type === 'category' ? t('cospend', 'Category sort method') : t('cospend', 'Payment mode sort method')
@@ -222,20 +222,26 @@ export default {
 			return this.type === 'category' ? t('cospend', 'No categories') : t('cospend', 'No payment modes')
 		},
 		sortOrderValue() {
+			if (!this.project) {
+				return constants.SORT_ORDER.MANUAL
+			}
 			return this.type === 'category'
 				? this.project.categorysort || constants.SORT_ORDER.MANUAL
 				: this.project.paymentmodesort || constants.SORT_ORDER.MANUAL
 		},
 		elements() {
+			if (!this.project) {
+				return []
+			}
 			return this.type === 'category'
-				? this.project.categories
-				: this.project.paymentmodes
+				? this.project.categories || []
+				: this.project.paymentmodes || []
 		},
 		adminAccess() {
-			return (this.project.myaccesslevel >= constants.ACCESS.ADMIN)
+			return (this.project?.myaccesslevel >= constants.ACCESS.ADMIN)
 		},
 		editionAccess() {
-			return (this.project.myaccesslevel >= constants.ACCESS.MAINTENER)
+			return (this.project?.myaccesslevel >= constants.ACCESS.MAINTENER)
 		},
 		elementList() {
 			return Object.values(this.elements)

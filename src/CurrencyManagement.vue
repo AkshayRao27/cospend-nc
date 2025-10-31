@@ -164,9 +164,15 @@ export default {
 
 	computed: {
 		currencies() {
+			if (!cospend.currentProjectId || !cospend.projects[cospend.currentProjectId]) {
+				return []
+			}
 			return cospend.projects[cospend.currentProjectId].currencies
 		},
 		project() {
+			if (!cospend.currentProjectId || !cospend.projects[cospend.currentProjectId]) {
+				return {}
+			}
 			return cospend.projects[cospend.currentProjectId]
 		},
 	},

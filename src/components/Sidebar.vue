@@ -191,14 +191,17 @@ export default {
 			return cospend.activity_enabled
 		},
 		project() {
-			return cospend.projects[this.projectId]
+			return cospend.projects[this.projectId] || {}
 		},
 		title() {
-			return this.project.name
+			return this.project.name || ''
 		},
 		subtitle() {
+			if (!this.project || !this.project.nb_bills) {
+				return ''
+			}
 			const nbBills = this.project.nb_bills
-			const spent = this.project.total_spent
+			const spent = this.project.total_spent || 0
 			let nbActiveMembers = 0
 			let member
 			for (const mid in this.members) {
@@ -253,11 +256,11 @@ export default {
 		},
 		onRenameClick() {
 			this.nameEditable = true
-			this.tmpName = this.project.name
+			this.tmpName = this.project.name || ''
 		},
 		onNameSubmit() {
 			this.nameEditable = false
-			if (this.project.name !== this.tmpName) {
+			if (this.project.name && this.project.name !== this.tmpName) {
 				cospend.projects[this.projectId].name = this.tmpName
 				this.$emit('project-edited', this.projectId)
 			}

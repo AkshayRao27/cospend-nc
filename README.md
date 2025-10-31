@@ -1,5 +1,11 @@
 # Nextcloud Cospend 💰
 
+> ⚠️ **FINAL VUE 2 VERSION (3.0.13-final)**
+>
+> This is the final release of Cospend for Vue 2.7. No further changes or updates will be made to this branch (`cross-project-balances-and-settlement-legacy`).
+>
+> **Future Plans:** These features will be ported to the latest Vue 3-based Cospend eventually, at some point. I have no idea when I'll get to it. Help is always welcome
+
 ![CI](https://github.com/julien-nc/cospend-nc/workflows/CI/badge.svg?branch=master&event=push)
 [![coverage report](https://github.com/julien-nc/cospend-nc/raw/gh-pages/coverage.svg)](https://julien-nc.github.io/cospend-nc/)
 [![Crowdin](https://d322cqt584bo4o.cloudfront.net/moneybuster/localized.svg)](https://crowdin.com/project/moneybuster)
@@ -33,6 +39,7 @@ All you need is to install Cospend (>= v1.6.0) and use the
 * ⚖ Check member balances
 * 🗠 Display project statistics
 * ♻ Display settlement plan
+* 🌍 **Cross-project settlements** - Settle balances across multiple projects simultaneously
 * Move bills from one project to another
 * Move bills to trash before actually deleting them
 * Archive old projects before deleting them

@@ -59,17 +59,32 @@
 						<span><strong>{{ t('cospend', 'Type:') }}</strong> {{ settlementTypeOption?.label }}</span>
 						<span><strong>{{ t('cospend', 'Amount:') }}</strong>
 							<span class="payment-direction" :class="{ 'payment-label': settlementAmount > 0, 'receive-label': settlementAmount < 0 }">
-								{{ formatCurrencyWithDirection(isPartialSettlement ? (partialSettlementConfirmed ? totalCustomAmount : partialAmount) : Math.abs(settlementAmount), selectedCurrencyCode, settlementAmount > 0) }}
+								{{ memoizedFormatCurrencyWithDirection(isPartialSettlement ? (partialSettlementConfirmed ? totalCustomAmount : partialAmount) : Math.abs(settlementAmount), selectedCurrencyCode, settlementAmount > 0) }}
 							</span>
 						</span>
 						<div v-if="showConfirmationDialog && confirmationBreakdown.length > 0" class="project-summary">
 							<span><strong>{{ t('cospend', 'Projects:') }}</strong></span>
 							<div class="project-list-summary">
 								<div v-for="project in confirmationBreakdown" :key="project.id" class="project-item-summary">
-									<span class="project-name">{{ project.name }}</span>
-									<span class="project-amount" :class="{ 'payment-amount': settlementAmount > 0, 'receive-amount': settlementAmount < 0 }">
-										{{ formatCurrencyWithDirection(project.billAmount, selectedCurrencyCode, settlementAmount > 0) }}
-									</span>
+									<div class="project-item-header">
+										<span class="project-name">{{ project.name }}</span>
+										<span class="project-amount" :class="{ 'payment-amount': settlementAmount > 0, 'receive-amount': settlementAmount < 0 }">
+											{{ memoizedFormatCurrencyWithDirection(project.billAmount, selectedCurrencyCode, settlementAmount > 0) }}
+										</span>
+									</div>
+									<div v-if="project.datetime || project.paymentMode || project.comment" class="project-optional-fields">
+										<div v-if="project.datetime" class="optional-field-display">
+											<CalendarIcon :size="16" />
+											<span>{{ formatDateTime(project.datetime) }}</span>
+										</div>
+										<div v-if="project.paymentMode" class="optional-field-display">
+											<TagIcon :size="16" />
+											<span>{{ project.paymentMode.label }}</span>
+										</div>
+										<div v-if="project.comment" class="optional-field-display">
+											<span class="comment-text">"{{ project.comment }}"</span>
+										</div>
+									</div>
 								</div>
 							</div>
 						</div>
@@ -96,6 +111,7 @@
 							:options="currencyOptions"
 							label="label"
 							track-by="id"
+							:label-outside="true"
 							:aria-label="t('cospend', 'Choose currency for settlement')"
 							@input="onCurrencyChange" />
 					</div>
@@ -112,6 +128,7 @@
 							:options="settlementTypeOptions"
 							label="label"
 							track-by="id"
+							:label-outside="true"
 							:aria-label="t('cospend', 'Choose settlement type')"
 							@input="onSettlementTypeChange" />
 					</div>
@@ -157,7 +174,7 @@
 							@input="validatePartialAmount">
 						<div v-else class="amount-display">
 							<span class="amount-value" :class="{ 'payment': settlementAmount > 0, 'receive': settlementAmount < 0 }">
-								{{ formatCurrency(Math.abs(settlementAmount), selectedCurrencyCode) }}
+								{{ memoizedFormatCurrency(Math.abs(settlementAmount), selectedCurrencyCode) }}
 							</span>
 						</div>
 					</div>
@@ -203,7 +220,7 @@
 							<!-- Show debt flow info in header -->
 							<div v-if="partialSettlementConfirmed" class="debt-flow-header">
 								<span class="current-debt-header" :class="{ 'payment-debt': settlementAmount > 0, 'receive-debt': settlementAmount < 0 }">
-									{{ formatCurrency(project.originalBalance, selectedCurrencyCode) }}
+									{{ memoizedFormatCurrency(project.originalBalance, selectedCurrencyCode) }}
 								</span>
 								<span class="arrow-header" :aria-label="t('cospend', 'becomes')">→</span>
 								<span :id="`debt-info-${project.id}`"
@@ -214,8 +231,8 @@
 										'payment-remaining': settlementAmount > 0,
 										'receive-remaining': settlementAmount < 0
 									}"
-									:aria-label="remainingDebt(project) <= 0 ? t('cospend', 'Debt will be settled') : t('cospend', 'Remaining debt: {amount}', { amount: formatCurrency(remainingDebt(project), selectedCurrencyCode) })">
-									{{ remainingDebt(project) <= 0 ? t('cospend', 'Settled') : formatCurrency(remainingDebt(project), selectedCurrencyCode) }}
+									:aria-label="remainingDebt(project) <= 0 ? t('cospend', 'Debt will be settled') : t('cospend', 'Remaining debt: {amount}', { amount: memoizedFormatCurrency(remainingDebt(project), selectedCurrencyCode) })">
+									{{ remainingDebt(project) <= 0 ? t('cospend', 'Settled') : memoizedFormatCurrency(remainingDebt(project), selectedCurrencyCode) }}
 								</span>
 							</div>
 						</div>
@@ -224,7 +241,7 @@
 								<span v-if="!partialSettlementConfirmed"
 									class="settlement-amount"
 									:class="{ 'payment-amount': settlementAmount > 0, 'receive-amount': settlementAmount < 0 }">
-									{{ formatCurrency(project.amount, selectedCurrencyCode) }}
+									{{ memoizedFormatCurrency(project.amount, selectedCurrencyCode) }}
 								</span>
 								<!-- Custom amount input when partial settlement is confirmed -->
 								<div v-else class="project-input-container">
@@ -253,9 +270,76 @@
 											class="overpayment-notice-inline">
 											<strong>{{ t('cospend', 'Note:') }}</strong>
 											{{ t('cospend', 'Exceeds original debt of {amount}', {
-												amount: formatCurrency(project.originalBalance, selectedCurrencyCode)
+												amount: memoizedFormatCurrency(project.originalBalance, selectedCurrencyCode)
 											}) }}
 										</span>
+									</div>
+								</div>
+							</div>
+
+							<!-- Additional Details Section for this project -->
+							<div class="project-optional-fields">
+								<NcButton
+									type="tertiary"
+									class="optional-fields-toggle"
+									:aria-expanded="getProjectOptionalField(project.id, 'showOptionalFields')"
+									@click="toggleProjectOptionalFields(project.id)">
+									<template #icon>
+										<ChevronDownIcon v-if="!getProjectOptionalField(project.id, 'showOptionalFields')" :size="20" />
+										<ChevronUpIcon v-else :size="20" />
+									</template>
+									{{ t('cospend', 'Additional details') }}
+								</NcButton>
+
+								<div v-if="getProjectOptionalField(project.id, 'showOptionalFields')" class="optional-fields-content">
+									<!-- When? and Payment Mode in a row -->
+									<div class="optional-fields-row">
+										<!-- When? - Date/Time Picker -->
+										<div class="optional-field">
+											<label :for="`settlement-date-${project.id}`">
+												<CalendarIcon :size="20" />
+												{{ t('cospend', 'When?') }}
+											</label>
+											<NcDateTimePicker
+												:id="`settlement-date-${project.id}`"
+												:value="getProjectOptionalField(project.id, 'datetime')"
+												:label="t('cospend', 'Settlement date and time')"
+												type="datetime"
+												format="YYYY-MM-DD HH:mm"
+												@input="setProjectOptionalField(project.id, 'datetime', $event)" />
+										</div>
+
+										<!-- Payment Mode Selection -->
+										<div class="optional-field">
+											<label :for="`settlement-paymentmode-${project.id}`">
+												<TagIcon :size="20" />
+												{{ t('cospend', 'Payment mode') }}
+											</label>
+											<NcSelect
+												:id="`settlement-paymentmode-${project.id}`"
+												:value="getProjectOptionalField(project.id, 'paymentMode')"
+												:options="getPaymentModeOptionsForProject(project.id)"
+												:placeholder="t('cospend', 'None')"
+												:clearable="true"
+												label="label"
+												track-by="id"
+												:label-outside="true"
+												:aria-label="t('cospend', 'Choose payment mode')"
+												@input="setProjectOptionalField(project.id, 'paymentMode', $event)" />
+										</div>
+									</div>
+
+									<!-- Comment Field -->
+									<div class="optional-field">
+										<label :for="`settlement-comment-${project.id}`">{{ t('cospend', 'Comment') }}</label>
+										<textarea
+											:id="`settlement-comment-${project.id}`"
+											:value="getProjectOptionalField(project.id, 'comment')"
+											:placeholder="t('cospend', 'More details about the bill (300 characters max)')"
+											rows="3"
+											maxlength="300"
+											class="comment-textarea"
+											@input="setProjectOptionalField(project.id, 'comment', $event.target.value)" />
 									</div>
 								</div>
 							</div>
@@ -268,7 +352,7 @@
 					<div class="amount-summary">
 						<div class="summary-item">
 							<span class="label">{{ t('cospend', 'Target total:') }}</span>
-							<span class="amount" :class="{ 'payment-amount': settlementAmount > 0, 'receive-amount': settlementAmount < 0 }">{{ formatCurrency(partialAmount, selectedCurrencyCode) }}</span>
+							<span class="amount" :class="{ 'payment-amount': settlementAmount > 0, 'receive-amount': settlementAmount < 0 }">{{ memoizedFormatCurrency(partialAmount, selectedCurrencyCode) }}</span>
 						</div>
 						<div class="summary-item">
 							<span class="label">{{ t('cospend', 'Current total:') }}</span>
@@ -280,7 +364,7 @@
 									'payment-amount': settlementAmount > 0 && hasValidCustomAmounts && totalCustomAmount > 0,
 									'receive-amount': settlementAmount < 0 && hasValidCustomAmounts && totalCustomAmount > 0
 								}">
-								{{ formatCurrency(totalCustomAmount, selectedCurrencyCode) }}
+								{{ memoizedFormatCurrency(totalCustomAmount, selectedCurrencyCode) }}
 							</span>
 						</div>
 					</div>
@@ -335,11 +419,16 @@
 // Component imports - Nextcloud Vue components for consistent UI
 import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
 import NcSelect from '@nextcloud/vue/dist/Components/NcSelect.js'
+import NcDateTimePicker from '@nextcloud/vue/dist/Components/NcDateTimePicker.js'
 
 // Material Design icons for buttons
 import CloseIcon from 'vue-material-design-icons/Close.vue'
 import ReimburseIcon from 'vue-material-design-icons/SwapHorizontal.vue'
 import CheckIcon from 'vue-material-design-icons/Check.vue'
+import ChevronDownIcon from 'vue-material-design-icons/ChevronDown.vue'
+import ChevronUpIcon from 'vue-material-design-icons/ChevronUp.vue'
+import CalendarIcon from 'vue-material-design-icons/Calendar.vue'
+import TagIcon from 'vue-material-design-icons/Tag.vue'
 
 // Nextcloud utilities
 import { showSuccess, showError } from '@nextcloud/dialogs'
@@ -347,6 +436,7 @@ import { translate as t } from '@nextcloud/l10n'
 
 // API function to create the actual settlement
 import { createCrossProjectSettlement } from '../network.js'
+import cospend from '../state.js'
 
 export default {
 	name: 'CrossProjectSettlement',
@@ -354,9 +444,14 @@ export default {
 	components: {
 		NcButton,
 		NcSelect,
+		NcDateTimePicker,
 		CloseIcon,
 		ReimburseIcon,
 		CheckIcon,
+		CalendarIcon,
+		TagIcon,
+		ChevronDownIcon,
+		ChevronUpIcon,
 	},
 
 	props: {
@@ -396,6 +491,10 @@ export default {
 			// Structure: { [projectId]: amount }
 			projectCustomAmounts: {},
 
+			// Optional fields for each project
+			// Structure: { [projectId]: { showOptionalFields: boolean, datetime: Date, paymentMode: object, comment: string } }
+			projectOptionalFields: {},
+
 			// Confirmation dialog state
 			showConfirmationDialog: false,
 			confirmationBreakdown: [], // Projects data for final confirmation
@@ -411,7 +510,6 @@ export default {
 			isCreatingSettlement: false,
 		}
 	},
-
 	computed: {
 		// ============================================
 		// Currency and Options Processing
@@ -591,12 +689,14 @@ export default {
 		currentSettlementPerson: {
 			handler(newPerson) {
 				if (newPerson && this.availableCurrencies.length > 0) {
+					// Reset all state first to ensure clean slate
+					this.resetAllSettlementState()
+
 					// Set default currency to the first available currency as an object for NcSelect
 					const defaultCurrency = this.availableCurrencies[0]
 					this.selectedCurrency = this.currencyOptions.find(option => option.id === defaultCurrency)
 					// Initialize settlement type option to full settlement
 					this.settlementTypeOption = this.settlementTypeOptions[0] // Full settlement
-					this.resetSettlementState()
 				}
 			},
 			immediate: true,
@@ -665,6 +765,77 @@ export default {
 		},
 
 		// ============================================
+		// Project Optional Fields Helpers
+		// ============================================
+
+		/**
+		 * Initialize optional fields for a project if not already initialized
+		 * @param {string} projectId - The project ID
+		 */
+		initProjectOptionalFields(projectId) {
+			if (!this.projectOptionalFields[projectId]) {
+				this.$set(this.projectOptionalFields, projectId, {
+					showOptionalFields: false,
+					datetime: new Date(),
+					paymentMode: null,
+					comment: '',
+				})
+			}
+		},
+
+		/**
+		 * Toggle the optional fields visibility for a specific project
+		 * @param {string} projectId - The project ID
+		 */
+		toggleProjectOptionalFields(projectId) {
+			this.initProjectOptionalFields(projectId)
+			this.projectOptionalFields[projectId].showOptionalFields = !this.projectOptionalFields[projectId].showOptionalFields
+		},
+
+		/**
+		 * Get an optional field value for a project
+		 * @param {string} projectId - The project ID
+		 * @param {string} field - The field name (showOptionalFields, datetime, paymentMode, comment)
+		 * @return {*} The field value or default
+		 */
+		getProjectOptionalField(projectId, field) {
+			this.initProjectOptionalFields(projectId)
+			return this.projectOptionalFields[projectId]?.[field]
+		},
+
+		/**
+		 * Set an optional field value for a project
+		 * @param {string} projectId - The project ID
+		 * @param {string} field - The field name (datetime, paymentMode, comment)
+		 * @param {*} value - The value to set
+		 */
+		setProjectOptionalField(projectId, field, value) {
+			this.initProjectOptionalFields(projectId)
+			this.$set(this.projectOptionalFields[projectId], field, value)
+		},
+
+		/**
+		 * Get payment mode options for a specific project
+		 * @param {string} projectId - The project ID
+		 * @return {array} Array of payment mode options
+		 */
+		getPaymentModeOptionsForProject(projectId) {
+			const projectPaymentModes = cospend.projects?.[projectId]?.paymentmodes || {}
+			const options = Object.values(projectPaymentModes).map(pm => ({
+				id: pm.id,
+				label: `${pm.icon || ''} ${pm.name || ''}`.trim(),
+				name: pm.name,
+				icon: pm.icon,
+				color: pm.color,
+			}))
+			
+			return [
+				{ id: null, label: t('cospend', 'No payment mode'), name: null, icon: '', color: '#000000' },
+				...options,
+			]
+		},
+
+		// ============================================
 		// Partial Settlement Helpers
 		// ============================================
 
@@ -687,6 +858,7 @@ export default {
 		/**
 		 * Format currency amount for display
 		 * Handles both string currency codes and NcSelect option objects
+		 * Uses Intl.NumberFormat for locale-aware number formatting
 		 * @param {number} amount The amount to format
 		 * @param {string|object} currency The currency code or object
 		 * @return {string} Formatted currency string
@@ -695,7 +867,10 @@ export default {
 			if (amount === undefined || amount === null) return '0'
 			// Handle both direct string and option object from NcSelect
 			const currencyCode = typeof currency === 'string' ? currency : currency?.id || currency?.label || 'EUR'
-			const formatted = parseFloat(amount).toFixed(2)
+			const formatted = new Intl.NumberFormat(navigator.language, {
+				minimumFractionDigits: 2,
+				maximumFractionDigits: 2,
+			}).format(Math.abs(amount))
 			return `${currencyCode} ${formatted}`
 		},
 
@@ -711,9 +886,36 @@ export default {
 		formatCurrencyWithDirection(amount, currency, isPayment) {
 			if (amount === undefined || amount === null) return '0'
 			const currencyCode = typeof currency === 'string' ? currency : currency?.id || currency?.label || 'EUR'
-			const formatted = parseFloat(amount).toFixed(2)
+			const formatted = new Intl.NumberFormat(navigator.language, {
+				minimumFractionDigits: 2,
+				maximumFractionDigits: 2,
+			}).format(Math.abs(amount))
 			const direction = isPayment ? t('cospend', 'You pay') : t('cospend', 'You receive')
 			return `${direction} ${currencyCode} ${formatted}`
+		},
+
+		// Direct formatters (memoization removed for simplicity)
+		memoizedFormatCurrency(amount, currency) {
+			return this.formatCurrency(amount, currency)
+		},
+
+		memoizedFormatCurrencyWithDirection(amount, currency, isPayment) {
+			return this.formatCurrencyWithDirection(amount, currency, isPayment)
+		},
+
+		/**
+		 * Format a Date object for display in confirmation dialog
+		 * @param {Date} date - The date to format
+		 * @return {string} Formatted date string
+		 */
+		formatDateTime(date) {
+			if (!date) return ''
+			const year = date.getFullYear()
+			const month = String(date.getMonth() + 1).padStart(2, '0')
+			const day = String(date.getDate()).padStart(2, '0')
+			const hours = String(date.getHours()).padStart(2, '0')
+			const minutes = String(date.getMinutes()).padStart(2, '0')
+			return `${year}-${month}-${day} ${hours}:${minutes}`
 		},
 
 		// ============================================
@@ -721,11 +923,38 @@ export default {
 		// ============================================
 
 		/**
+		 * Reset all settlement state to initial values
+		 * Called when switching to a different person for settlement
+		 */
+		resetAllSettlementState() {
+			this.isPartialSettlement = false
+			this.partialAmount = 0
+			this.partialSettlementConfirmed = false
+			this.projectCustomAmounts = {}
+			this.showConfirmationDialog = false
+			this.confirmationBreakdown = []
+			this.confirmationTotalAmount = 0
+			this.configurationCollapsed = false
+			this.isCreatingSettlement = false
+			this.selectedCurrency = null
+			this.settlementTypeOption = null
+
+			// Reset to default options when available
+			if (this.availableCurrencies.length > 0) {
+				const defaultCurrency = this.availableCurrencies[0]
+				this.selectedCurrency = this.currencyOptions.find(option => option.id === defaultCurrency)
+			}
+			if (this.settlementTypeOptions && this.settlementTypeOptions.length > 0) {
+				this.settlementTypeOption = this.settlementTypeOptions[0] // Full settlement
+			}
+		},
+
+		/**
 		 * Reset settlement state when switching persons or currencies
 		 * Clears all partial settlement data and custom amounts
 		 * Returns component to default full settlement mode
 		 */
-		resetSettlementState() {
+		resetSettlementConfiguration() {
 			this.isPartialSettlement = false
 			this.partialAmount = 0
 			this.partialSettlementConfirmed = false
@@ -751,7 +980,7 @@ export default {
 		 * Returns to full settlement mode and clears all partial data
 		 */
 		disablePartialSettlement() {
-			this.resetSettlementState()
+			this.resetSettlementConfiguration()
 		},
 
 		/**
@@ -810,6 +1039,31 @@ export default {
 		// ============================================
 
 		/**
+		 * Reset all settlement state to initial values
+		 * Used after successful settlement completion
+		 */
+		resetSettlementState() {
+			// Reset all UI state
+			this.showConfirmationDialog = false
+			this.configurationCollapsed = false
+			this.isCreatingSettlement = false
+
+			// Reset settlement type and amounts
+			this.isPartialSettlement = false
+			this.partialAmount = 0
+			this.partialSettlementConfirmed = false
+			this.projectCustomAmounts = {}
+
+			// Reset confirmation data
+			this.confirmationBreakdown = []
+			this.confirmationTotalAmount = 0
+
+			// Reset currency and type selections
+			this.selectedCurrency = null
+			this.settlementTypeOption = null
+		},
+
+		/**
 		 * Cancel settlement and return to previous view
 		 * Emits event to parent component to handle navigation
 		 */
@@ -841,12 +1095,19 @@ export default {
 					billAmount = this.projectCustomAmounts[project.id] || 0
 				}
 
+				// Get optional fields for this project
+				const optionalFields = this.projectOptionalFields[project.id] || {}
+
 				return {
 					id: project.id,
 					name: project.name,
 					originalBalance: project.originalBalance,
 					billAmount,
 					remainingDebt: Math.max(0, project.originalBalance - billAmount),
+					// Include optional fields for display
+					datetime: optionalFields.datetime || null,
+					paymentMode: optionalFields.paymentMode || null,
+					comment: optionalFields.comment || null,
 				}
 			}).filter(project => project.billAmount > 0) // Only show projects that will actually be settled
 
@@ -896,10 +1157,26 @@ export default {
 						billAmount = project.amount
 					}
 
-					return {
+					// Get optional fields for this project
+					const optionalFields = this.projectOptionalFields[project.id] || {}
+					const projectData = {
 						projectId: project.id,
 						billAmount: Math.abs(billAmount),
 					}
+
+					// Add optional fields if they have been set
+					if (optionalFields.datetime) {
+						// Convert to Unix timestamp (seconds)
+						projectData.timestamp = Math.floor(optionalFields.datetime.getTime() / 1000)
+					}
+					if (optionalFields.paymentMode && optionalFields.paymentMode.id !== null) {
+						projectData.paymentModeId = optionalFields.paymentMode.id
+					}
+					if (optionalFields.comment && optionalFields.comment.trim()) {
+						projectData.comment = optionalFields.comment.trim()
+					}
+
+					return projectData
 				}).filter(project => project.billAmount >= 0.01)
 
 				// Calculate actual total amount being settled
@@ -907,7 +1184,7 @@ export default {
 
 				// Prepare settlement data for the API
 				const settlementData = {
-					targetUserId: this.currentSettlementPerson.member.userid || this.currentSettlementPerson.member.id,
+					targetUserId: String(this.currentSettlementPerson.member.userid || this.currentSettlementPerson.member.id),
 					targetUserName: this.currentSettlementPerson.member.name,
 					currency: this.selectedCurrencyCode,
 					totalAmount: actualTotalAmount,
@@ -930,11 +1207,14 @@ export default {
 							: t('cospend', 'Settlement created successfully'),
 				)
 
-				// Close confirmation dialog
-				this.showConfirmationDialog = false
+				// Reset all settlement state after successful completion
+				this.resetSettlementState()
 
-				// Emit event to refresh balances
-				this.$emit('settlement-created')
+				// Extract affected project IDs for balance updates
+				const affectedProjectIds = projectBreakdown.map(project => project.projectId)
+
+				// Emit event to refresh balances with affected project IDs
+				this.$emit('settlement-created', affectedProjectIds)
 				this.cancelSettlement()
 
 			} catch (error) {
@@ -1066,12 +1346,11 @@ export default {
 			grid-template-columns: 1fr 1fr;
 			gap: 20px;
 			align-items: end;
-			margin-bottom: 20px;
+			margin-bottom: 16px;
 
 			@media (max-width: 768px) {
 				grid-template-columns: 1fr;
 				gap: 12px;
-				margin-bottom: 16px;
 			}
 
 			.config-section {
@@ -1093,6 +1372,7 @@ export default {
 					}
 				}
 			}
+
 		}
 
 		/* Collapsed state for better UX when settlement is created */
@@ -1167,7 +1447,10 @@ export default {
 					}
 
 					.payment-direction {
-						font-size: 13px;
+						font-family: var(--font-face);
+						font-size: 14px;
+						font-weight: 600;
+						font-variant-numeric: tabular-nums;
 						font-style: italic;
 						opacity: 0.8;
 						margin-left: 4px;
@@ -1194,36 +1477,66 @@ export default {
 
 						.project-item-summary {
 							display: flex;
-							justify-content: space-between;
-							align-items: center;
-							padding: 6px 8px;
+							flex-direction: column;
+							padding: 8px;
 							background: var(--color-background-dark);
 							border-radius: 4px;
 							border-left: 3px solid var(--color-primary-element);
+							gap: 6px;
 
-							.project-name {
-								font-size: 13px;
-								font-weight: 500;
-								color: var(--color-main-text);
-								flex: 1;
-							}
+							.project-item-header {
+								display: flex;
+								justify-content: space-between;
+								align-items: center;
 
-							.project-amount {
-								font-size: 13px;
-								font-weight: 600;
-								margin-right: 8px;
-
-								&.payment-amount {
-									color: var(--color-error);
+								.project-name {
+									font-size: 13px;
+									font-weight: 500;
+									color: var(--color-main-text);
+									flex: 1;
 								}
 
-								&.receive-amount {
-									color: var(--color-success);
+								.project-amount {
+									font-family: var(--font-face);
+									font-size: 14px;
+									font-weight: 600;
+									font-variant-numeric: tabular-nums;
+									margin-left: 8px;
+
+									&.payment-amount {
+										color: var(--color-error);
+									}
+
+									&.receive-amount {
+										color: var(--color-success);
+									}
+								}
+							}
+
+							.project-optional-fields {
+								display: flex;
+								flex-direction: column;
+								gap: 4px;
+								padding-left: 8px;
+								font-size: 12px;
+								color: var(--color-text-maxcontrast);
+
+								.optional-field-display {
+									display: flex;
+									align-items: center;
+									gap: 6px;
+
+									.comment-text {
+										font-style: italic;
+									}
 								}
 							}
 
 							.payment-direction {
-								font-size: 11px;
+								font-family: var(--font-face);
+								font-size: 14px;
+								font-weight: 600;
+								font-variant-numeric: tabular-nums;
 								font-style: italic;
 								opacity: 0.8;
 
@@ -1294,10 +1607,6 @@ font-size: 14px;
 		.config-section {
 			display: flex;
 			align-items: center;
-
-			@media (max-width: 768px) {
-				align-items: center; /* Ensure proper alignment on mobile */
-			}
 
 			.amount-input {
 				width: 120px;
@@ -1414,14 +1723,14 @@ font-size: 14px;
 }
 
 .settlement-actions {
-	margin-top: 32px;
-	margin-bottom: 20px;
+	margin-top: 12px;
+	margin-bottom: 12px;
 
 	.simple-confirmation {
 		display: flex;
 		justify-content: center;
 		gap: 16px;
-		margin-top: 16px;
+		margin-top: 12px;
 
 		@media (max-width: 768px) {
 			flex-direction: column;
@@ -1441,8 +1750,8 @@ font-size: 14px;
 
 /* PROJECT BREAKDOWN PREVIEW - ENHANCED STYLING */
 .project-breakdown-preview {
-	margin-top: 24px;
-	margin-bottom: 24px;
+	margin-top: 12px;
+	margin-bottom: 12px;
 	padding: 16px;
 	background: var(--color-background-hover);
 	border-radius: 8px;
@@ -1464,7 +1773,7 @@ font-size: 14px;
 	.project-list {
 		display: flex;
 		flex-direction: column;
-		gap: 16px; /* Reduced from 20px to be more compact */
+		gap: 16px;
 
 		.project-preview {
 			border: 1px solid var(--color-border);
@@ -1557,8 +1866,10 @@ font-size: 14px;
 					/* NON-EDITABLE AMOUNT DISPLAY */
 					.settlement-amount {
 						display: inline-block;
-						font-size: 16px;
+						font-family: var(--font-face);
+						font-size: 14px;
 						font-weight: 600;
+						font-variant-numeric: tabular-nums;
 						padding: 8px 12px;
 						border-radius: var(--border-radius);
 
@@ -1786,6 +2097,88 @@ font-size: 14px;
 					font-weight: 500;
 				}
 			}
+
+			// Project-specific optional fields
+			.project-optional-fields {
+				margin-top: 16px;
+				padding-top: 16px;
+				border-top: 1px solid var(--color-border);
+
+				.optional-fields-toggle {
+					width: 100%;
+					margin-bottom: 12px;
+					font-size: 13px;
+
+					:deep(.button-vue__wrapper) {
+						justify-content: flex-start;
+					}
+				}
+
+				.optional-fields-content {
+					display: flex;
+					flex-direction: column;
+					gap: 12px;
+					padding: 12px;
+					background: var(--color-background-hover);
+					border-radius: var(--border-radius);
+
+					.optional-fields-row {
+						display: flex;
+						gap: 12px;
+						align-items: flex-end;
+
+						@media (max-width: 768px) {
+							flex-direction: column;
+							align-items: stretch;
+						}
+
+						> .optional-field {
+							flex: 1;
+							min-width: 0;
+						}
+					}
+
+					.optional-field {
+						display: flex;
+						flex-direction: column;
+						gap: 6px;
+
+						label {
+							font-weight: 500;
+							font-size: 13px;
+							color: var(--color-main-text);
+							display: flex;
+							align-items: center;
+							gap: 6px;
+						}
+
+						:deep(.vs__container),
+						:deep(.vs__dropdown-toggle) {
+							width: 100% !important;
+						}
+
+						:deep(.nc-datetime-picker),
+						:deep(.nc-datetime-picker input) {
+							width: 100% !important;
+						}
+
+						.comment-textarea {
+							width: 100%;
+							padding: 8px;
+							border: 1px solid var(--color-border-dark);
+							border-radius: var(--border-radius);
+							font-family: var(--font-face);
+							font-size: 14px;
+							resize: vertical;
+
+							&:focus {
+								outline: 2px solid var(--color-primary);
+								outline-offset: -2px;
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -1892,8 +2285,10 @@ font-size: 14px;
 				}
 
 				.amount {
-					font-size: 18px;
-					font-weight: 700;
+					font-family: var(--font-face);
+					font-size: 14px;
+					font-weight: 600;
+					font-variant-numeric: tabular-nums;
 					color: var(--color-main-text);
 					position: relative;
 					transition: all 0.3s ease;
@@ -1947,7 +2342,7 @@ border: 0;
 }
 
 .settlement-confirmation {
-padding: 20px;
+padding: 12px;
 
 .confirmation-header {
 text-align: center;
@@ -2021,8 +2416,11 @@ font-weight: 500;
 }
 
 .project-amount {
-color: var(--color-primary);
+font-family: var(--font-face);
+font-size: 14px;
 font-weight: 600;
+font-variant-numeric: tabular-nums;
+color: var(--color-primary);
 }
 }
 }

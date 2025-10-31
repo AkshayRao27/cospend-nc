@@ -50,6 +50,9 @@ function getOptionValuesSuccess(response) {
 				cospend.useTime = optionsValues[k] !== '0'
 			} else if (k === 'showMyBalance') {
 				cospend.showMyBalance = optionsValues[k] !== '0'
+			} else if (k === 'hideOwnBalance') {
+				// User preference: Convert server string ('1'/'0') to boolean
+				cospend.hideOwnBalance = optionsValues[k] !== '0'
 			} else if (k === 'showSummaryFirst') {
 				// Cross-project balance settings: Convert server string ('1'/'0') to boolean
 				// This ensures proper boolean type for reactive Vue components and prevents persistence issues

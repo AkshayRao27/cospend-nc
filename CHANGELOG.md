@@ -4,6 +4,80 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [3.0.13-final] – 2025-10-31
+
+**⚠️ IMPORTANT: Final Vue2 Version**
+
+This is the **final release** of Cospend for Vue 2.7. This branch (`cross-project-balances-and-settlement-legacy`) will not receive further updates or changes.
+
+**Future Plans:**
+- I will attempt to port these features (cross-project settlements, cumulative balances, hide own balance) to the latest Vue 3-based version of Cospend, but I have neither a timeline nor an ETA. Help is welcome, of course.
+- If you intend to use this branch, please note that this represents the end-of-life for Vue 2 support.
+
+### Added
+
+**Cross-Project Settlement Feature**
+- Cross-project settlement component: Settle balances with members across multiple projects simultaneously
+- Full and partial settlement modes: Choose to settle entire balance or custom per-project amounts
+- Per-project optional fields: Add date/time, payment mode, and comments to settlement bills per project
+- Cumulative balance view: See total balances across all projects grouped by currency with quick settlement access
+- Cumulative balance display in navigation sidebar: Always-visible summary of money owed/owed to current user
+- Settlement confirmation dialog: Preview all settlement details including optional fields before finalizing
+- Backend API endpoint: `POST /ocs/v2.php/apps/cospend/api/v1/cross-project-settlement` with full validation
+- Member lookup with fallback: Automatically match Nextcloud users (by userid) and local members (by name)
+- Reimbursement bill creation: Automatically create bills in all affected projects with optional fields
+
+**Documentation**
+- Comprehensive implementation details document: Complete technical reference for all changes
+- Updated developer documentation with architecture overview and data flow
+- Updated user documentation with cross-project settlement usage guide
+- Enhanced README with cross-project settlement feature description
+
+**UI/UX Improvements**
+- Multi-currency balance aggregation and display with currency chip styling
+- Responsive mobile-optimized settlement dialog with touch-friendly inputs
+- Font standardization across balance displays (14px, font-weight 600, tabular-nums)
+- Fixed-width currency chips (32px) for consistent alignment
+- Improved navigation component centering and spacing
+- New user preference: "Hide my balance" setting to hide current user's balance in project member lists (useful for 2-person projects to reduce redundancy)
+
+### Fixed
+
+**Member and Bill Creation**
+- Fixed silent failures in cross-project settlement when target user is a local project member (no Nextcloud userid)
+- Fixed member lookup to support both Nextcloud users and local-only project members
+- Fixed type errors in bill creation by ensuring proper string conversion of member IDs
+- Fixed settlement bill creation to include and preserve optional fields (timestamp, payment mode, comment)
+
+**UI and Rendering**
+- Fixed currency amount alignment in balance displays using `font-variant-numeric: tabular-nums`
+- Fixed text wrapping issues in navigation and balance view using `white-space: nowrap` and proper flex constraints
+- Fixed vertical centering of cumulative balance display in navigation using `:deep()` CSS selectors
+- Fixed layout of optional field display in settlement confirmation dialog
+
+**Console Errors and Warnings**
+- Removed orphaned `@confirm-settlement` Vue event handler in App.vue causing "unknown custom element" warnings
+- Fixed undefined `project` property errors in Sidebar.vue when viewing Cumulative Balance (added null-safety checks)
+- Fixed undefined reference errors in CurrencyManagement.vue by adding defensive checks for project access
+- Fixed missing `shares` array errors in SharingTabSidebar.vue by adding optional chaining and fallback values
+- Fixed missing `members` array errors in SettingsTabSidebar.vue by adding null checks
+- Fixed property access warnings in CategoryOrPmManagement.vue by applying optional chaining throughout
+- Added `labelOutside="true"` to NcSelect components for improved accessibility and removed form warnings
+
+**State Management**
+- Fixed stale balance state issues by ensuring proper reactivity in cumulative balance calculations
+- Fixed race conditions in balance aggregation by using computed properties with dependency tracking
+
+### Changed
+
+- Settlement flow now shows optional field details in confirmation dialog with appropriate icons (calendar, tag, text)
+- Improved currency chip display with proper alignment, fixed widths, and light-on-dark styling
+- Backend validation changed to allow flexible timestamps (removed 30-day/365-day range restriction) while maintaining other validations
+- Enhanced member lookup to follow a priority system: exact userid match → name fallback → skip project
+- Settlement bills now always include optional fields when provided, with proper null handling
+- Improved error messaging to be more specific about which project/field caused validation failures
+- Updated documentation to reflect all implementation changes and design decisions
+
 ## 3.0.11 – 2025-01-28
 
 ### Fixed

@@ -170,8 +170,7 @@
 			@export-clicked="onExportClicked"
 			@paymentmode-deleted="onPaymentModeDeleted"
 			@category-deleted="onCategoryDeleted"
-			@cancel-settlement="onCancelSettlement"
-			@confirm-settlement="onConfirmSettlement" />
+			@cancel-settlement="onCancelSettlement" />
 	</NcContent>
 </template>
 

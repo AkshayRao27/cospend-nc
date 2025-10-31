@@ -1,26 +1,45 @@
 <!--
-	Cross-Project Balance View Component
+	Cross-Project Balance View Component - Central Hub for Multi-Project Financial Overview
 
 	This component implements the Cross-project balances feature (GitHub issue #281).
-	It displays balance information showing what the current user owes
-	to and is owed by other users across all projects they participate in.
+	It represents a major architectural enhancement that aggregates balance information
+	across all projects a user participates in, providing a comprehensive financial overview.
 
-	Key Features:
-	1. Summary cards showing total amounts owed/owed to user and net balance
-	2. Per-person breakdown with expandable project details
-	3. Proper balance interpretation consistent with settlement views
-	4. Loading states and error handling
+	CORE FUNCTIONALITY:
+	1. **Balance Aggregation**: Calculates net balances across all active projects
+	2. **Currency Management**: Handles multiple currencies with proper aggregation
+	3. **Person Consolidation**: Merges balances for the same person across projects
+	4. **Settlement Integration**: Direct access to cross-project settlement features
 
-	The component fetches data from the /api/v1/cross-project-balances endpoint
-	and presents it in a user-friendly format that helps users understand their
-	overall financial position across all their Cospend projects.
+	TECHNICAL ARCHITECTURE:
+	- **Lazy Loading**: Component is dynamically imported to optimize bundle size
+	- **API Integration**: Uses /api/v1/cross-project-balances endpoint
+	- **Memoization**: Expensive calculations are cached for performance
+	- **Reactive State**: Real-time updates when settlements are created
 
-	Balance Logic:
-	- Positive amounts = user owes money to that person
-	- Negative amounts = that person owes money to user
-	- Display labels are adjusted accordingly ("You owe" vs "Owes you")
+	USER INTERFACE DESIGN:
+	- **Summary Cards**: High-level overview of financial position per currency
+	- **Person Breakdown**: Detailed view of relationships with each person
+	- **Project Details**: Expandable sections showing project-level contributions
+	- **Settlement Actions**: Direct access to settlement functionality
 
-	@since 1.6.0 Added for cross-project balance aggregation feature
+	BALANCE INTERPRETATION (Critical for Consistency):
+	- **Positive amounts**: Current user owes money to that person
+	- **Negative amounts**: That person owes money to current user
+	- **Display labels**: Automatically adjusted ("You owe" vs "Owes you")
+
+	This interpretation maintains consistency with individual project settlement views
+	and ensures users have a coherent understanding across the application.
+
+	PERFORMANCE CONSIDERATIONS:
+	- **Filtering**: Only shows people with settleable balances (> 0.01)
+	- **Sorting**: Smart sorting by balance amount, name, or currency
+	- **Caching**: Balance calculations and formatting are memoized
+	- **Responsive**: Optimized layouts for different screen sizes
+
+	@since 3.0.12 Major feature addition for cross-project balance management
+	@see CrossProjectSettlement.vue for settlement functionality
+	@see CospendNavigation.vue for navigation integration
 -->
 <template>
 	<div class="cross-project-balances">
@@ -458,13 +477,19 @@ export default {
 		/**
 		 * Sort person balances based on user preferences
 		 * Supports sorting by name, balance amount, or currency
+		 * Only includes people with settleable balances (> 0.01)
 		 */
 		sortedPersonBalances() {
 			if (!this.balanceData?.personBalances) {
 				return []
 			}
 
-			const sortedPersons = [...this.balanceData.personBalances]
+			// Filter out people with no settleable balances
+			const peopleWithBalances = this.balanceData.personBalances.filter(person =>
+				this.hasSettleableBalances(person),
+			)
+
+			const sortedPersons = [...peopleWithBalances]
 
 			sortedPersons.sort((a, b) => {
 				let compareValue = 0
@@ -620,12 +645,12 @@ export default {
 			}
 
 			if (difference > tolerance) {
-				return this.t('cospend', 'Total is {amount} {currency} over the settlement amount', {
+				return t('cospend', 'Total is {amount} {currency} over the settlement amount', {
 					amount: this.formatCurrency(difference),
 					currency: this.settlementCurrency,
 				})
 			} else {
-				return this.t('cospend', 'Total is {amount} {currency} under the settlement amount', {
+				return t('cospend', 'Total is {amount} {currency} under the settlement amount', {
 					amount: this.formatCurrency(Math.abs(difference)),
 					currency: this.settlementCurrency,
 				})
@@ -670,7 +695,6 @@ export default {
 		 */
 		summarySortByOptions() {
 			return [
-				{ id: 'amount', label: this.t('cospend', 'Amount') },
 				{ id: 'amount', label: t('cospend', 'Amount') },
 				{ id: 'currency', label: t('cospend', 'Currency') },
 			]
@@ -682,7 +706,6 @@ export default {
 		 */
 		summarySortOrderOptions() {
 			return [
-				{ id: 'desc', label: this.t('cospend', 'Descending') },
 				{ id: 'desc', label: t('cospend', 'Descending') },
 				{ id: 'asc', label: t('cospend', 'Ascending') },
 			]
@@ -694,8 +717,6 @@ export default {
 		 */
 		personSortByOptions() {
 			return [
-				{ id: 'balance', label: this.t('cospend', 'Balance') },
-				{ id: 'name', label: this.t('cospend', 'Name') },
 				{ id: 'balance', label: t('cospend', 'Balance') },
 				{ id: 'name', label: t('cospend', 'Name') },
 				{ id: 'currency', label: t('cospend', 'Currency') },
@@ -708,7 +729,6 @@ export default {
 		 */
 		personSortOrderOptions() {
 			return [
-				{ id: 'desc', label: this.t('cospend', 'Descending') },
 				{ id: 'desc', label: t('cospend', 'Descending') },
 				{ id: 'asc', label: t('cospend', 'Ascending') },
 			]
@@ -932,7 +952,10 @@ export default {
 		 * @return {boolean}
 		 */
 		hasSettleableBalances(person) {
-			return Object.values(person.currencyBalances || {})
+			if (!person?.currencyBalances) {
+				return false
+			}
+			return Object.values(person.currencyBalances)
 				.some(currencyBalance => Math.abs(currencyBalance.totalBalance) > 0.01)
 		},
 
@@ -1087,6 +1110,20 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+// Global rule: All currency amounts use tabular numbers for consistent digit alignment
+.amount,
+.amount-value,
+.amount-input,
+.currency-label,
+.amount-display,
+.summary-card .amount,
+.summary-card-compact .amount,
+.currency-summary .amount {
+	font-family: var(--font-face) !important;
+	font-variant-numeric: tabular-nums !important;
+	font-weight: 600;
+}
+
 .cross-project-balances {
 	padding: 16px;
 	max-width: 1200px;
@@ -1128,6 +1165,8 @@ export default {
 .balances-area {
 	flex: 1;
 	min-width: 0; // Prevents flex item from overflowing
+	overflow-y: auto; // Add vertical scrolling
+	max-height: calc(100vh - 150px); // Limit height to viewport minus header
 }
 
 // Settlement placeholder when no settlement is active
@@ -1257,13 +1296,13 @@ export default {
 }
 
 .summary-cards {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	display: flex;
+	flex-wrap: wrap;
 	gap: 16px;
 	margin-bottom: 0;
 
 	@media (max-width: 768px) {
-		grid-template-columns: 1fr;
+		flex-direction: column;
 		gap: 12px;
 	}
 }
@@ -1277,10 +1316,13 @@ export default {
 	align-items: center;
 	gap: 12px;
 	transition: all 0.2s ease;
+	white-space: nowrap;
+	flex-shrink: 0;
 
 	@media (max-width: 768px) {
 		padding: 12px;
 		gap: 10px;
+		white-space: normal;
 	}
 
 	&:hover {
@@ -1320,8 +1362,10 @@ export default {
 		}
 
 		.amount {
+			font-family: var(--font-face);
 			font-size: 1.2em;
 			font-weight: bold;
+			font-variant-numeric: tabular-nums;
 
 			&.positive {
 				color: var(--color-success);
@@ -1383,6 +1427,7 @@ export default {
 		gap: 2px;
 		min-width: 0;
 		flex: 1;
+		align-items: flex-end;
 
 		.label {
 			font-size: 12px;
@@ -1395,6 +1440,8 @@ export default {
 			font-size: 14px;
 			font-weight: 600;
 			line-height: 1.1;
+			font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Fira Mono', 'Roboto Mono', 'Consolas', monospace;
+			font-variant-numeric: tabular-nums;
 
 			&.positive {
 				color: var(--color-success);
@@ -1460,8 +1507,12 @@ export default {
 
 .person-list {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(max(260px, 25%), 1fr));
 	gap: 16px;
+
+	@media (max-width: 768px) {
+		grid-template-columns: 1fr;
+	}
 }
 
 .person-card {
@@ -1545,6 +1596,7 @@ export default {
 	font-size: 0.85em;
 	display: flex;
 	align-items: center;
+	white-space: nowrap; // Prevent text from wrapping
 
 	&.positive {
 		color: var(--color-success);
@@ -1893,6 +1945,18 @@ export default {
 
 	.button-vue {
 		flex-shrink: 0;
+		padding: 4px 12px !important;
+		font-size: 0.9em;
+	}
+
+	:deep(.button-vue__wrapper) {
+		gap: 4px !important;
+	}
+
+	:deep(.button-vue__icon) {
+		width: 16px !important;
+		height: 16px !important;
+		min-width: 16px !important;
 	}
 }
 

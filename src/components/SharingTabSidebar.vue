@@ -464,22 +464,22 @@ export default {
 
 	computed: {
 		editionAccess() {
-			return this.project.myaccesslevel >= constants.ACCESS.PARTICIPANT
+			return this.project?.myaccesslevel >= constants.ACCESS.PARTICIPANT
 		},
 		myAccessLevel() {
-			return this.project.myaccesslevel
+			return this.project?.myaccesslevel
 		},
 		shares() {
-			return this.project.shares
+			return this.project?.shares || []
 		},
 		linkShares() {
-			return this.shares.filter(sh => sh.type === constants.SHARE_TYPE.PUBLIC_LINK)
+			return (this.shares || []).filter(sh => sh.type === constants.SHARE_TYPE.PUBLIC_LINK)
 		},
 		federatedShares() {
-			return this.shares.filter(sh => sh.type === constants.SHARE_TYPE.FEDERATED)
+			return (this.shares || []).filter(sh => sh.type === constants.SHARE_TYPE.FEDERATED)
 		},
 		ugcShares() {
-			return this.shares.filter(sh => [constants.SHARE_TYPE.USER, constants.SHARE_TYPE.GROUP, constants.SHARE_TYPE.CIRCLE].includes(sh.type))
+			return (this.shares || []).filter(sh => [constants.SHARE_TYPE.USER, constants.SHARE_TYPE.GROUP, constants.SHARE_TYPE.CIRCLE].includes(sh.type))
 		},
 		projectId() {
 			return this.project.id

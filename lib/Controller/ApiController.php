@@ -1757,6 +1757,35 @@ class ApiController extends OCSController {
 	 * @since 1.6.0 Added for cross-project settlement feature
 	 */
 	#[NoAdminRequired]
+	/**
+	 * Create cross-project settlements between two users
+	 *
+	 * This endpoint creates settlement bills across multiple projects for a user pair.
+	 * It's used when settling debts/credits that span multiple projects with the same user.
+	 *
+	 * @param string $targetUserId The Nextcloud user ID of the person to settle with
+	 * @param string $targetUserName The display name of the person to settle with
+	 * @param string $currency The currency code for the settlement (e.g., 'EUR', 'USD')
+	 * @param float $totalAmount The total amount being settled
+	 * @param bool $isPayment True if current user is paying (isPayment=1), false if receiving (isPayment=0)
+	 * @param array $projectBreakdown Array of project breakdown objects with structure:
+	 *   [
+	 *     {
+	 *       'projectId': string,      // Project ID
+	 *       'billAmount': float,      // Amount to settle in this project
+	 *       'timestamp': int,         // (optional) Unix timestamp for the bill
+	 *       'paymentModeId': int,     // (optional) Payment mode ID
+	 *       'comment': string         // (optional) Bill comment (max 300 chars)
+	 *     },
+	 *     ...
+	 *   ]
+	 *
+	 * @return DataResponse Empty success response, or error with message
+	 *
+	 * @throws CospendBasicException If validation fails or settlement creation fails
+	 *
+	 * @since 1.6.0 Added for cross-project settlement feature
+	 */
 	#[OpenAPI(scope: OpenAPI::SCOPE_DEFAULT, tags: ['Projects'])]
 	public function createCrossProjectSettlement(
 		string $targetUserId,

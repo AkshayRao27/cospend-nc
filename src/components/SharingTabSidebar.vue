@@ -799,7 +799,7 @@ export default {
 }
 
 .avatardiv {
-	background-color: #f5f5f5;
+	background-color: var(--color-background-hover);
 	border-radius: 16px;
 	width: 32px;
 	height: 32px;
@@ -815,7 +815,7 @@ export default {
 
 .avatardiv.link-icon {
 	background-color: var(--color-primary);
-	color: white;
+	color: var(--color-primary-element-text, #fff);
 	display: flex;
 	align-items: center;
 	padding: 6px 6px 6px 6px;

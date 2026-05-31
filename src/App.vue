@@ -15,8 +15,13 @@
 			:show-details="shouldShowDetails"
 			@update:showDetails="showList">
 			<template #list>
+				<CrossProjectBalanceView
+					v-if="mode === 'cross-project-balances'"
+					ref="crossProjectBalanceView"
+					@close="onCloseCrossProjectBalances"
+					@settlement-person-selected="onSettlementPersonSelected" />
 				<BillList
-					v-if="currentProjectId"
+					v-else-if="currentProjectId"
 					ref="billList"
 					:loading="billsLoading"
 					:project-id="currentProjectId"
@@ -64,6 +69,11 @@
 					v-else-if="mode === 'settle'"
 					:project-id="currentProjectId"
 					@auto-settled="onAutoSettled" />
+				<CrossProjectSettlement
+					v-if="mode === 'cross-project-balances'"
+					:current-settlement-person="currentSettlementPerson"
+					@cancel-settlement="onCancelSettlement"
+					@settlement-created="onSettlementCreated" />
 				<NcEmptyContent v-show="showProjectEmptyContent"
 					class="central-empty-content"
 					:name="t('cospend', 'What do you want to do?')"
@@ -188,6 +198,8 @@ export default {
 	components: {
 		CospendNavigation: defineAsyncComponent(() => import('./components/CospendNavigation.vue')),
 		CospendSettingsDialog: defineAsyncComponent(() => import('./components/CospendSettingsDialog.vue')),
+		CrossProjectBalanceView: defineAsyncComponent(() => import('./components/CrossProjectBalanceView.vue')),
+		CrossProjectSettlement: defineAsyncComponent(() => import('./components/CrossProjectSettlement.vue')),
 		BillList: defineAsyncComponent(() => import('./BillList.vue')),
 		BillForm: defineAsyncComponent(() => import('./BillForm.vue')),
 		Statistics: defineAsyncComponent(() => import('./components/statistics/Statistics.vue')),
@@ -235,10 +247,14 @@ export default {
 			billToMove: null,
 			pendingInvitations: [],
 			unreachableFederatedProject: [],
+			currentSettlementPerson: null,
 		}
 	},
 	computed: {
 		shouldShowDetails() {
+			if (this.mode === 'cross-project-balances') {
+				return this.currentSettlementPerson !== null
+			}
 			return (this.currentBill && this.currentBill !== null) || !['edition', 'normal'].includes(this.mode)
 		},
 		showProjectEmptyContent() {
@@ -359,6 +375,7 @@ export default {
 		subscribe('remove-pending-invitation', this.removePendingInvitation)
 		subscribe('remove-project', this.removeProject)
 		subscribe('remove-unreachable-project', this.removeUnreachableProject)
+		subscribe('show-cross-project-balances', this.onShowCrossProjectBalances)
 	},
 	beforeDestroy() {
 		unsubscribe('nextcloud:unified-search:search', this.filter)
@@ -393,8 +410,33 @@ export default {
 		unsubscribe('remove-pending-invitation', this.removePendingInvitation)
 		unsubscribe('remove-project', this.removeProject)
 		unsubscribe('remove-unreachable-project', this.removeUnreachableProject)
+		unsubscribe('show-cross-project-balances', this.onShowCrossProjectBalances)
 	},
 	methods: {
+		onShowCrossProjectBalances() {
+			this.currentBill = null
+			this.currentSettlementPerson = null
+			this.selectedMemberId = null
+			this.cospend.currentProjectId = null
+			this.mode = 'cross-project-balances'
+			this.$nextTick(() => {
+				this.$refs.crossProjectBalanceView?.loadBalances()
+			})
+		},
+		onCloseCrossProjectBalances() {
+			this.currentSettlementPerson = null
+			this.mode = 'normal'
+		},
+		onSettlementPersonSelected(payload) {
+			this.currentSettlementPerson = payload
+		},
+		onCancelSettlement() {
+			this.currentSettlementPerson = null
+		},
+		onSettlementCreated() {
+			this.currentSettlementPerson = null
+			this.$refs.crossProjectBalanceView?.loadBalances()
+		},
 		removeUnreachableProject(invitationId) {
 			const index = this.unreachableFederatedProject.findIndex(i => i.id === invitationId)
 			if (index !== -1) {
@@ -1283,7 +1325,11 @@ export default {
 		},
 		showList() {
 			this.currentBill = null
-			this.mode = 'edition'
+			if (this.mode !== 'cross-project-balances') {
+				this.mode = 'edition'
+			} else {
+				this.currentSettlementPerson = null
+			}
 		},
 	},
 }

@@ -190,8 +190,8 @@ export default {
 }
 
 .editCurrencyOk {
-	background-color: #46ba61;
-	color: white;
+	background-color: var(--color-success);
+	color: var(--color-primary-element-text, #fff);
 }
 
 :deep(.deleteCurrencyButton:hover) {

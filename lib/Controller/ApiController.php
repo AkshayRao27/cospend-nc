@@ -58,6 +58,7 @@ use OCP\Share\IShare;
  * @psalm-import-type CospendPaymentMode from ResponseDefinitions
  * @psalm-import-type CospendCategory from ResponseDefinitions
  * @psalm-import-type CospendCurrency from ResponseDefinitions
+ * @psalm-import-type CospendCrossProjectBalances from ResponseDefinitions
  * @psalm-import-type CospendUserShare from ResponseDefinitions
  * @psalm-import-type CospendPublicShare from ResponseDefinitions
  * @psalm-import-type CospendGroupShare from ResponseDefinitions
@@ -91,8 +92,14 @@ class ApiController extends OCSController {
 	 */
 	private static function getResponseFromClientException(ClientException $e): DataResponse {
 		$response = $e->getResponse();
+		if ($response === null) {
+			return new DataResponse([
+				'error' => 'unknown error',
+				'status_code' => Http::STATUS_FAILED_DEPENDENCY,
+			], Http::STATUS_FAILED_DEPENDENCY);
+		}
 		$statusCode = $response->getStatusCode();
-		$body = $response->getBody();
+		$body = (string)$response->getBody();
 		$parsedBody = json_decode($body, true);
 		if (!isset($parsedBody['ocs']['data'])) {
 			$data = ['error' => 'unknown error'];
@@ -1525,6 +1532,7 @@ class ApiController extends OCSController {
 		}
 		$shares = $this->shareManager->getSharesBy($this->userId,
 			IShare::TYPE_LINK, $file, false, 1, 0);
+		$token = null;
 		if (count($shares) > 0) {
 			foreach ($shares as $share) {
 				if ($share->getPassword() === null) {
@@ -1532,7 +1540,9 @@ class ApiController extends OCSController {
 					break;
 				}
 			}
-		} else {
+		}
+
+		if ($token === null) {
 			$share = $this->shareManager->newShare();
 			$share->setNode($file);
 			$share->setPermissions(Constants::PERMISSION_READ);
@@ -1708,5 +1718,57 @@ class ApiController extends OCSController {
 	#[NoAdminRequired]
 	public function ping(): DataResponse {
 		return new DataResponse([$this->userId]);
+	}
+
+	/**
+	 * Get cross-project balances for the current user
+	 *
+	 * @return DataResponse<Http::STATUS_OK, CospendCrossProjectBalances, array{}>
+	 * @throws Exception
+	 */
+	#[NoAdminRequired]
+	#[OpenAPI(scope: OpenAPI::SCOPE_DEFAULT, tags: ['Projects'])]
+	public function getCrossProjectBalances(): DataResponse {
+		$balances = $this->cospendService->getCrossProjectBalances($this->userId);
+		return new DataResponse($balances);
+	}
+
+	/**
+	 * Create cross-project settlement bills
+	 *
+	 * @param string $targetUserId
+	 * @param string $targetUserName
+	 * @param string $currency
+	 * @param float $totalAmount
+	 * @param bool $isPayment
+	 * @param list<array{projectId: string, billAmount: float, timestamp?: int, paymentModeId?: int, comment?: string}> $projectBreakdown
+	 * @return DataResponse<Http::STATUS_OK, string, array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array<string, string>, array{}>
+	 */
+	#[NoAdminRequired]
+	#[OpenAPI(scope: OpenAPI::SCOPE_DEFAULT, tags: ['Projects'])]
+	public function createCrossProjectSettlement(
+		string $targetUserId,
+		string $targetUserName,
+		string $currency,
+		float $totalAmount,
+		bool $isPayment,
+		array $projectBreakdown,
+	): DataResponse {
+		try {
+			$this->cospendService->createCrossProjectSettlement(
+				$this->userId,
+				$targetUserId,
+				$targetUserName,
+				$currency,
+				$totalAmount,
+				$isPayment,
+				$projectBreakdown,
+			);
+			return new DataResponse('');
+		} catch (CospendBasicException $e) {
+			return new DataResponse($e->data, Http::STATUS_BAD_REQUEST);
+		} catch (\Exception $e) {
+			return new DataResponse(['message' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+		}
 	}
 }

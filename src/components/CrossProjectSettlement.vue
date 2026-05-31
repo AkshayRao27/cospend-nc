@@ -164,7 +164,7 @@
 							id="partial-amount-input"
 							v-model.number="partialAmount"
 							type="number"
-							:step="1"
+							:step="0.01"
 							:min="0"
 							:max="Math.abs(settlementAmount)"
 							class="amount-input"
@@ -255,7 +255,7 @@
 												:id="`project-amount-${project.id}`"
 												:value="projectCustomAmounts[project.id] || 0"
 												type="number"
-												:step="1"
+												:step="0.01"
 												:min="0"
 												:max="getProjectInputMax(project)"
 												:placeholder="t('cospend', 'Enter amount')"
@@ -305,7 +305,7 @@
 												:value="getProjectOptionalField(project.id, 'datetime')"
 												:label="t('cospend', 'Settlement date and time')"
 												type="datetime"
-												format="YYYY-MM-DD HH:mm"
+												format="yyyy-MM-dd HH:mm"
 												@input="setProjectOptionalField(project.id, 'datetime', $event)" />
 										</div>
 
@@ -558,9 +558,9 @@ export default {
 			const amount = this.isPartialSettlement ? this.partialAmount : Math.abs(this.settlementAmount)
 			if (amount <= 0 || !this.selectedCurrencyCode) return false
 
-			// For confirmed partial settlements, just check if user has entered any amounts
+			// For confirmed partial settlements, require the split to match the target amount.
 			if (this.partialSettlementConfirmed) {
-				return this.totalCustomAmount > 0
+				return this.totalCustomAmount > 0 && this.hasValidCustomAmounts
 			}
 
 			return true
@@ -775,12 +775,12 @@ export default {
 		 */
 		initProjectOptionalFields(projectId) {
 			if (!this.projectOptionalFields[projectId]) {
-				this.$set(this.projectOptionalFields, projectId, {
+				this.projectOptionalFields[projectId] = {
 					showOptionalFields: false,
 					datetime: new Date(),
 					paymentMode: null,
 					comment: '',
-				})
+				}
 			}
 		},
 
@@ -812,7 +812,7 @@ export default {
 		 */
 		setProjectOptionalField(projectId, field, value) {
 			this.initProjectOptionalFields(projectId)
-			this.$set(this.projectOptionalFields[projectId], field, value)
+			this.projectOptionalFields[projectId][field] = value
 		},
 
 		/**
@@ -905,6 +905,19 @@ export default {
 		},
 
 		/**
+		 * Normalize money-like numbers to two decimals to avoid floating point artifacts.
+		 * @param {number|string} value
+		 * @return {number}
+		 */
+		roundAmount(value) {
+			const num = Number(value)
+			if (!Number.isFinite(num)) {
+				return 0
+			}
+			return Math.round((num + Number.EPSILON) * 100) / 100
+		},
+
+		/**
 		 * Format a Date object for display in confirmation dialog
 		 * @param {Date} date - The date to format
 		 * @return {string} Formatted date string
@@ -973,7 +986,7 @@ export default {
 		 */
 		enablePartialSettlement() {
 			this.isPartialSettlement = true
-			this.partialAmount = Math.abs(this.settlementAmount)
+			this.partialAmount = this.roundAmount(Math.abs(this.settlementAmount))
 		},
 
 		/**
@@ -1012,7 +1025,8 @@ export default {
 		 * Validate partial amount input
 		 */
 		validatePartialAmount() {
-			const maxAmount = Math.abs(this.settlementAmount)
+			const maxAmount = this.roundAmount(Math.abs(this.settlementAmount))
+			this.partialAmount = this.roundAmount(this.partialAmount)
 			if (this.partialAmount > maxAmount) {
 				this.partialAmount = maxAmount
 			} else if (this.partialAmount < 0) {
@@ -1027,7 +1041,7 @@ export default {
 		 * @param {string} value The new amount value as a string from input
 		 */
 		updateCustomAmount(projectId, value) {
-			const numValue = parseFloat(value) || 0
+			const numValue = this.roundAmount(parseFloat(value) || 0)
 			// Use Vue.set for reactivity with dynamic object properties
 			this.projectCustomAmounts = {
 				...this.projectCustomAmounts,

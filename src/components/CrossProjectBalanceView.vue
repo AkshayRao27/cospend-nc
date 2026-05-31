@@ -418,6 +418,7 @@ import ColoredAvatar from './avatar/ColoredAvatar.vue'
 import * as network from '../network.js'
 import { showError } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
+import { emit } from '@nextcloud/event-bus'
 
 const cospend = OCA.Cospend.state
 
@@ -892,6 +893,8 @@ export default {
 		startSettlement(person) {
 			// Emit event to parent (App.vue) to handle settlement in the right panel
 			this.$emit('settlement-person-selected', person)
+			// Fallback path for slotted rendering contexts where component emits can be swallowed.
+			emit('cross-project-settlement-person-selected', person)
 		},
 
 		/**

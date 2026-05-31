@@ -70,10 +70,19 @@
 					:project-id="currentProjectId"
 					@auto-settled="onAutoSettled" />
 				<CrossProjectSettlement
-					v-if="mode === 'cross-project-balances'"
+					v-if="mode === 'cross-project-balances' && currentSettlementPerson"
 					:current-settlement-person="currentSettlementPerson"
 					@cancel-settlement="onCancelSettlement"
 					@settlement-created="onSettlementCreated" />
+				<NcEmptyContent v-else-if="mode === 'cross-project-balances'"
+					class="central-empty-content"
+					:name="t('cospend', 'Select a person to settle')"
+					:title="t('cospend', 'Select a person to settle')"
+					:description="t('cospend', 'Use the Settle button in the balances list to start a cross-project settlement.')">
+					<template #icon>
+						<ReimburseIcon />
+					</template>
+				</NcEmptyContent>
 				<NcEmptyContent v-show="showProjectEmptyContent"
 					class="central-empty-content"
 					:name="t('cospend', 'What do you want to do?')"
@@ -253,7 +262,7 @@ export default {
 	computed: {
 		shouldShowDetails() {
 			if (this.mode === 'cross-project-balances') {
-				return this.currentSettlementPerson !== null
+				return true
 			}
 			return (this.currentBill && this.currentBill !== null) || !['edition', 'normal'].includes(this.mode)
 		},
@@ -376,6 +385,7 @@ export default {
 		subscribe('remove-project', this.removeProject)
 		subscribe('remove-unreachable-project', this.removeUnreachableProject)
 		subscribe('show-cross-project-balances', this.onShowCrossProjectBalances)
+		subscribe('cross-project-settlement-person-selected', this.onSettlementPersonSelected)
 	},
 	beforeDestroy() {
 		unsubscribe('nextcloud:unified-search:search', this.filter)
@@ -411,6 +421,7 @@ export default {
 		unsubscribe('remove-project', this.removeProject)
 		unsubscribe('remove-unreachable-project', this.removeUnreachableProject)
 		unsubscribe('show-cross-project-balances', this.onShowCrossProjectBalances)
+		unsubscribe('cross-project-settlement-person-selected', this.onSettlementPersonSelected)
 	},
 	methods: {
 		onShowCrossProjectBalances() {
@@ -433,9 +444,17 @@ export default {
 		onCancelSettlement() {
 			this.currentSettlementPerson = null
 		},
-		onSettlementCreated() {
+		onSettlementCreated(affectedProjectIds = []) {
 			this.currentSettlementPerson = null
 			this.$refs.crossProjectBalanceView?.loadBalances()
+			const projectIdsToRefresh = Array.isArray(affectedProjectIds) && affectedProjectIds.length > 0
+				? affectedProjectIds
+				: Object.keys(this.projects)
+			projectIdsToRefresh
+				.filter((projectId) => this.projects[projectId] && this.members[projectId])
+				.forEach((projectId) => {
+					this.updateProjectInfo(projectId)
+				})
 		},
 		removeUnreachableProject(invitationId) {
 			const index = this.unreachableFederatedProject.findIndex(i => i.id === invitationId)
@@ -1323,13 +1342,21 @@ export default {
 				}
 			}
 		},
-		showList() {
-			this.currentBill = null
-			if (this.mode !== 'cross-project-balances') {
-				this.mode = 'edition'
-			} else {
-				this.currentSettlementPerson = null
+		showList(showDetails) {
+			// In cross-project mode, details visibility is controlled by
+			// currentSettlementPerson and explicit settlement events.
+			// Ignore generic AppContent toggles to avoid clearing selection races.
+			if (this.mode === 'cross-project-balances') {
+				return
 			}
+
+			// NcAppContent can emit both opening and closing transitions.
+			if (showDetails === true) {
+				return
+			}
+
+			this.currentBill = null
+			this.mode = 'edition'
 		},
 	},
 }

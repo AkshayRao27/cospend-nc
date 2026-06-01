@@ -47,14 +47,6 @@
 						</template>
 						{{ t('cospend', 'Show the trash bin') }}
 					</NcActionButton>
-					<NcActionButton v-if="oneActiveMember && trashbinEnabled"
-						:close-after-click="true"
-						@click="onCloseTrashbinClicked">
-						<template #icon>
-							<ArrowLeftIcon />
-						</template>
-						{{ t('cospend', 'Close trashbin') }}
-					</NcActionButton>
 					<NcActionButton v-if="trashbinEnabled && editionAccess && bills.length > 0"
 						:close-after-click="true"
 						@click="showClearTrashBinConfirmation = true">

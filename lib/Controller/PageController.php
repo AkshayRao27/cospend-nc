@@ -390,8 +390,8 @@ class PageController extends Controller {
 
 		return new DataResponse('');
 	}
-
-	private function getOptionsValues(): array {
+	#[NoAdminRequired]
+	public function getOptionsValues(): array {
 		$settings = [];
 		$keys = $this->userConfig->getKeys($this->userId, Application::APP_ID);
 		foreach ($keys as $key) {

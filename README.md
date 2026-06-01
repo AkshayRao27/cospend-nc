@@ -30,8 +30,10 @@ All you need is to install Cospend (>= v1.6.0) and use the
 
 * ✎ Create/edit/delete projects, members, bills, bill categories, currencies
 * ⚖ Check member balances
+* ⚖ View cumulative balances across all projects by currency and person
 * 🗠 Display project statistics
 * ♻ Display settlement plan
+* Create settlement bills across multiple projects in one flow (full or partial)
 * Move bills from one project to another
 * Move bills to trash before actually deleting them
 * Archive old projects before deleting them
@@ -68,6 +70,8 @@ If you'd like to support the creation and maintenance of this software, consider
 * [User documentation](https://github.com/julien-nc/cospend-nc/blob/master/docs/user.md)
 * [Admin documentation](https://github.com/julien-nc/cospend-nc/blob/master/docs/admin.md)
 * [Developer documentation](https://github.com/julien-nc/cospend-nc/blob/master/docs/dev.md)
+* [Implementation details](https://github.com/julien-nc/cospend-nc/blob/master/docs/IMPLEMENTATION_DETAILS.md)
+* [Release notes: v4.0.1-final draft](https://github.com/julien-nc/cospend-nc/blob/master/docs/releases/v4.0.1-final.md)
 * [CHANGELOG](https://github.com/julien-nc/cospend-nc/blob/master/CHANGELOG.md#change-log)
 * [AUTHORS](https://github.com/julien-nc/cospend-nc/blob/master/AUTHORS.md#authors)
 

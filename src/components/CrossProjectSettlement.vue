@@ -906,7 +906,7 @@ export default {
 
 		/**
 		 * Normalize money-like numbers to two decimals to avoid floating point artifacts.
-		 * @param {number|string} value
+		 * @param {number|string} value Number-like input to normalize.
 		 * @return {number}
 		 */
 		roundAmount(value) {

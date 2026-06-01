@@ -1,8 +1,8 @@
 * [Introduction](#s1)
-  * [What is a project :paperclip: ?](#s1-1)
-  * [What are balances :balance_scale: ?](#s1-2)
-  * [What is a member :ok_woman: ?](#s1-3)
-  * [What is a bill :dollar: ?](#s1-4)
+  * [Project](#s1-1)
+  * [Balance](#s1-2)
+  * [Member](#s1-3)
+  * [Bill](#s1-4)
 * [Create a project](#s2)
   * [Shared access](#s2-1)
     * [Share link permissions](#s2-1-1)
@@ -10,60 +10,40 @@
 * [Create a bill](#s4)
 * [Project statistics](#s5)
 * [Settle the project](#s6)
+* [Cumulative balances](#s7)
+  * [Enable and customize cumulative view](#s7-1)
+  * [Balances by person](#s7-2)
+* [Cross-project settlement](#s8)
+  * [Create a full settlement](#s8-1)
+  * [Create a partial settlement](#s8-2)
+  * [Per-project optional fields](#s8-3)
+* [Deep links and shareable URLs](#s9)
 
 # <a id='s1' />Introduction
 
-Things you should know:
+Most fields are required. Validation messages in the UI explain missing or invalid values.
 
-* "Sometimes small tools save big time" (:blond_haired_person: MacGyver)
-* Most (all?) fields are mandatory in Cospend. The cold interface messages will tell you that.
+## <a id='s1-1' />Project
 
-## <a id='s1-1' />What is a project :paperclip: ?
+A project groups members and bills. It tracks who paid, who owes, and each member's running balance.
 
-A project contains members and bills. A project is a way to manage what is spent in a group of persons.
-It's a way to know who paid what for whom and when and who owes how much to the group.
-Debts are not personal, a member who has a debt in the group (negative balance) can pay anyone in the group
-to bring his/her balance back to zero and leave the group. This will have an effect on other's balances.
+## <a id='s1-2' />Balance
 
-## <a id='s1-2' />What are balances :balance_scale: ?
+A positive balance means the member paid more than their share.
+A negative balance means the member owes money to the group.
+Settlement operations move balances toward zero.
 
-The balance value represents the situation of a member in a project.
-A positive balance indicates that the member payed more for the group than the grouped payed for them.
-By keeping an eye on the balance, one can stop taking care of exactly how much they owe to each project member.
+## <a id='s1-3' />Member
 
-If member A has a negative balance, -10 for example, it just means A owes 10$ to the group.
-Any payment of 10$ to the group (or a sub part of the group) will bring the balance back to zero.
-It does not matter who it was payed for.
+A member has a name, weight, and activation status.
+A disabled member cannot be added to new bills, but remains visible until balance reaches zero.
 
-All those actions have the same effect on the member A's balance => Make it raise of 10:
+Members can represent individuals or grouped entities.
+Weight controls how bill shares are split.
 
-0. Member A pays 20$ for a cake that is eaten by A and B (one bill payed by A with A and B as owers)
-1. Member A pays 10$ to member B (one bill payed by A with B as ower)
-2. Member A pays 5$ to member B and 5$ to member C (one bill payed by A with B as ower, another bill payed by A with C as ower)
-3. Member A pays a 15$ cake eaten by A, B and C (on bill payed by A with A, B and C as owers)
+## <a id='s1-4' />Bill
 
-The only difference is the effect on other members balances:
-
-0. -10 in B's balance
-1. -10 in B's balance
-2. -5 in B's balance and -5 in C's balance
-3. -5 in each ower's balance
-
-## <a id='s1-3' />What is a member :ok_woman: ?
-
-A member has a name, a weight and can be activated or not. When a member is disabled, it cannot be part of a new bill (as a payer or an ower). A disabled member will appear in member list until their balance reaches 0.
-
-A member can be one real person. This is the most common case. Just add one member for each person in the group you want to manage.
-
-A member can also be a sub-group of persons. For example, if Alice and Bob are a couple and want to be considered as one member in MoneyBuster, it is possible. Just create a member named "Alice & Bob" with a weight of 2. This way, when they are concerned by a bill payed by someone else, the member "Alice & Bob" will owe 2 shares of this bill, not one.
-
-For example if Roger, with a weight of 1, pays a 30 euros bill which concerns Robert and "Alice & Bob", the balance of Roger is going up of 30. The bill concerns Roger (weight = 1) and "Alice & Bob" (weight = 2). The sum of the members weight is 3, this means we have to split the bill in 3 shares. Roger will owe 1 share (10 euros) and "Alice & Bob" will owe 2 shares (20 euros).
-
-It seems simple enough to do it intuitively with a small example but it gets really complicated for a bigger one. Let the tool do the job. :eyeglasses:
-
-## <a id='s1-4' />What is a bill :dollar: ?
-
-A bill is a spending from one member which concerns one or more members in the project. A bill is defined by a name, an amount, a payer, a date and a list of owers.
+A bill records an expense paid by one member and owed by one or more members.
 
 # <a id='s2' />Create a project
 
@@ -90,13 +70,12 @@ There are 4 permission levels for shared links:
 
 # <a id='s3' />Create a member
 
-This is pretty simple. Press "+" in the project drop-down menu and then press "add a member".
-
-Just provide a user name and that's it. Member is added with a weight of 1 and is activated by default.
+Open the project menu, select **Add member**, and provide a name.
+New members default to weight `1` and active status.
 
 # <a id='s4' />Create a bill
 
-Pretty simple too. Press the "new bill" button. Fill all fields and press the "Save bill" button.
+Click **New bill**, fill required fields, and save.
 
 # <a id='s5' />Project statistics
 
@@ -105,3 +84,79 @@ The filters on top of the statistics page apply to all the statistics charts and
 # <a id='s6' />Settle the project
 
 This feature gives you an optimal project settlement/reimbursement plan to put everyone's balance back to 0.
+
+# <a id='s7' />Cumulative balances
+
+Cumulative balances provide a cross-project overview of what you owe and what is owed to you.
+
+## <a id='s7-1' />Enable and customize cumulative view
+
+1. Open Cospend settings.
+2. Go to the **Cumulative balances** section.
+3. Enable **Show cumulative balances**.
+4. Optionally customize:
+  - Initial section order
+  - Project detail visibility
+  - Sorting for people and summary sections
+
+## <a id='s7-2' />Balances by person
+
+The cumulative screen groups balances by person and currency across all active (non-archived) projects.
+
+- **You owe X** means you need to pay that person.
+- **Owes you X** means that person owes you.
+
+For each person, you can expand project-level details and start settlement directly from the same view.
+
+# <a id='s8' />Cross-project settlement
+
+Cross-project settlement creates reimbursement bills across multiple projects in one operation.
+
+## <a id='s8-1' />Create a full settlement
+
+1. Open the cumulative balances view.
+2. Click **Settle** on the target person.
+3. Choose the settlement currency.
+4. Select **Full settlement**.
+5. Review the project breakdown and confirm.
+
+The app creates reimbursement bills in each impacted project.
+
+## <a id='s8-2' />Create a partial settlement
+
+1. Start settlement from the target person.
+2. Select **Partial settlement**.
+3. Enter total partial amount.
+4. Click **Set custom amounts**.
+5. Adjust per-project amounts as needed.
+6. Confirm settlement.
+
+The interface displays remaining debt in real time as you edit project amounts.
+
+## <a id='s8-3' />Per-project optional fields
+
+Each project amount can include optional metadata:
+
+- Date/time
+- Payment mode
+- Comment (max 300 characters)
+
+These values are stored on the generated reimbursement bill for that specific project.
+
+# <a id='s9' />Deep links and shareable URLs
+
+Cospend uses path-based URLs for all major views. You can bookmark, reload, or share any of the following links and the correct view will restore automatically.
+
+| URL | View |
+|-----|------|
+| `/apps/cospend/` | Home (no project selected) |
+| `/apps/cospend/p/{projectId}` | Project view |
+| `/apps/cospend/p/{projectId}/b/{billId}` | Specific bill |
+| `/apps/cospend/cross-project` | Cumulative balances |
+| `/apps/cospend/cross-project/settle/{personKey}` | Settlement with a specific person |
+
+`{personKey}` identifies a person across projects:
+- Nextcloud user: `user=userid` (e.g. `user=alice`)
+- Anonymous member: `name=first-last` (e.g. `name=alice-bregenz`)
+
+Names are lowercased and spaces replaced with hyphens.

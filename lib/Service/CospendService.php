@@ -70,7 +70,7 @@ class CospendService {
 	 * Aggregate user balances with other members across all non-archived projects.
 	 *
 	 * @param string $userId
-	 * @return array{currencyTotals: list<array{currency: string, totalOwed: float, totalOwedTo: float, netBalance: float}>, personBalances: list<array{member: array{name: string, userid: ?string, id: int}, currencyBalances: array<string, array{currency: string, totalBalance: float, projects: list<array{projectId: string, projectName: string, balance: float}>}>, projects: list<array{projectId: string, projectName: string, currency: string, balance: float}>}>, summary: array<string, array{currency: string, owed: list<array{member: array{name: string, userid: ?string, id: int}, amount: float}>, owedTo: list<array{member: array{name: string, userid: ?string, id: int}, amount: float}>}>}
+	 * @return array{currencyTotals: list<array{currency: string, totalOwed: float, totalOwedTo: float, netBalance: float}>, personBalances: list<array{personKey: string, member: array{name: string, userid: ?string, id: int}, currencyBalances: array<string, array{currency: string, totalBalance: float, projects: list<array{projectId: string, projectName: string, balance: float}>}>, projects: list<array{projectId: string, projectName: string, currency: string, balance: float}>}>, summary: array<string, array{currency: string, owed: list<array{member: array{name: string, userid: ?string, id: int}, amount: float}>, owedTo: list<array{member: array{name: string, userid: ?string, id: int}, amount: float}>}>}
 	 */
 	public function getCrossProjectBalances(string $userId): array {
 		$projects = $this->localProjectService->getLocalProjects($userId);
@@ -210,6 +210,7 @@ class CospendService {
 			$personIdentifier = $this->getPersonIdentifier($member);
 			if (!isset($personBalances[$personIdentifier])) {
 				$personBalances[$personIdentifier] = [
+					'personKey' => $personIdentifier,
 					'member' => [
 						'name' => (string)($member['name'] ?? 'Unknown'),
 						'userid' => $member['userid'] ?? null,
@@ -256,9 +257,9 @@ class CospendService {
 	private function getPersonIdentifier(array $member): string {
 		$userId = (string)($member['userid'] ?? '');
 		if ($userId !== '') {
-			return 'user:' . $userId;
+			return 'user=' . $userId;
 		}
-		return 'name:' . strtolower(trim((string)($member['name'] ?? '')));
+		return 'name=' . str_replace(' ', '-', strtolower(trim((string)($member['name'] ?? ''))));
 	}
 
 	/**

@@ -181,6 +181,7 @@ namespace OCA\Cospend;
  * @psalm-type CospendCrossProjectBalances = array{
  *     currencyTotals: list<array{currency: string, totalOwed: float, totalOwedTo: float, netBalance: float}>,
  *     personBalances: list<array{
+ *         personKey: string,
  *         member: array{name: string, userid: ?string, id: int},
  *         currencyBalances: array<string, array{currency: string, totalBalance: float, projects: list<array{projectId: string, projectName: string, balance: float}>}>,
  *         projects: list<array{projectId: string, projectName: string, currency: string, balance: float}>

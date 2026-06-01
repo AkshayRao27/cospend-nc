@@ -14,6 +14,7 @@ namespace OCA\Cospend\Controller;
 
 use OC\Files\Filesystem;
 use OCA\Cospend\AppInfo\Application;
+use OCA\Cospend\Service\CospendService;
 use OCA\Cospend\Service\LocalProjectService;
 use OCP\App\AppPathNotFoundException;
 use OCP\App\IAppManager;
@@ -51,6 +52,7 @@ class PageController extends Controller {
 		string $appName,
 		IRequest $request,
 		private IL10N $trans,
+		private CospendService $cospendService,
 		private LocalProjectService $projectService,
 		private IInitialState $initialStateService,
 		private IAppManager $appManager,
@@ -72,11 +74,18 @@ class PageController extends Controller {
 	 *
 	 * @param string|null $projectId
 	 * @param int|null $billId
+	 * @param string|null $crossProjectMode
+	 * @param string|null $crossProjectPersonKey
 	 * @return TemplateResponse
 	 */
 	#[NoAdminRequired]
 	#[NoCSRFRequired]
-	public function index(?string $projectId = null, ?int $billId = null): TemplateResponse {
+	public function index(
+		?string $projectId = null,
+		?int $billId = null,
+		?string $crossProjectMode = null,
+		?string $crossProjectPersonKey = null,
+	): TemplateResponse {
 		$state = $this->getOptionsValues();
 		$activityEnabled = $this->appManager->isEnabledForUser('activity');
 		$state['activity_enabled'] = $activityEnabled;
@@ -94,6 +103,17 @@ class PageController extends Controller {
 				$bill = $this->projectService->getBill($state['restoredCurrentProjectId'], $billId);
 				$state['restoredCurrentBillId'] = $billId;
 			} catch (\Exception|\Throwable $e) {
+			}
+		}
+		$state['restoredCrossProjectMode'] = null;
+		$state['restoredCrossProjectPersonKey'] = null;
+		if ($crossProjectMode !== null && $this->userId !== null) {
+			$state['restoredCurrentProjectId'] = null;
+			$state['restoredCurrentBillId'] = null;
+			$state['restoredCrossProjectMode'] = 'balances';
+			if ($crossProjectMode === 'settlement' && $crossProjectPersonKey !== null && $this->hasCrossProjectPersonKey($crossProjectPersonKey)) {
+				$state['restoredCrossProjectMode'] = 'settlement';
+				$state['restoredCrossProjectPersonKey'] = $crossProjectPersonKey;
 			}
 		}
 		$state['useTime'] = ($state['useTime'] ?? '0') !== '0';
@@ -191,6 +211,40 @@ class PageController extends Controller {
 	#[NoCSRFRequired]
 	public function indexBill(string $projectId, int $billId): TemplateResponse {
 		return $this->index($projectId, $billId);
+	}
+
+	/**
+	 * Main page
+	 *
+	 * @return TemplateResponse
+	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	public function indexCrossProject(): TemplateResponse {
+		return $this->index(null, null, 'balances');
+	}
+
+	/**
+	 * Main page
+	 *
+	 * @param string $personKey
+	 * @return TemplateResponse
+	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	public function indexCrossProjectSettlement(string $personKey): TemplateResponse {
+		return $this->index(null, null, 'settlement', $personKey);
+	}
+
+	private function hasCrossProjectPersonKey(string $personKey): bool {
+		$balances = $this->cospendService->getCrossProjectBalances($this->userId);
+		foreach ($balances['personBalances'] as $personBalance) {
+			if (($personBalance['personKey'] ?? null) === $personKey) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**

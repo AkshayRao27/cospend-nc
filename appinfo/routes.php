@@ -25,6 +25,8 @@ return [
 		['name' => 'page#getSvgFromApp', 'url' => '/svg/{fileName}', 'verb' => 'GET'],
 		['name' => 'page#indexProject', 'url' => '/p/{projectId}', 'verb' => 'GET'],
 		['name' => 'page#indexBill', 'url' => '/p/{projectId}/b/{billId}', 'verb' => 'GET'],
+		['name' => 'page#indexCrossProject', 'url' => '/cross-project', 'verb' => 'GET'],
+		['name' => 'page#indexCrossProjectSettlement', 'url' => '/cross-project/settle/{personKey}', 'verb' => 'GET', 'requirements' => ['personKey' => '.+']],
 		['name' => 'page#pubProject', 'url' => 'project', 'verb' => 'POST'],
 		['name' => 'page#publicShareLinkPage', 'url' => 's/{token}', 'verb' => 'GET'],
 

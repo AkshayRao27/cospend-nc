@@ -810,6 +810,7 @@ export default {
 				// Call the cross-project balance API endpoint
 				const response = await network.getCrossProjectBalances()
 				this.balanceData = response.data.ocs.data
+				this.$emit('balances-loaded')
 			} catch (error) {
 				console.error('Failed to load cumulative balances:', error)
 				this.error = error.response?.data?.ocs?.meta?.message || t('cospend', 'Failed to load cumulative balances')
@@ -838,7 +839,13 @@ export default {
 		 * @return {string} Unique key for the person
 		 */
 		getPersonKey(person) {
-			return person.member.userid || `name-${person.member.name}`
+			if (person?.personKey) {
+				return person.personKey
+			}
+			if (person?.member?.userid) {
+				return `user=${person.member.userid}`
+			}
+			return `name=${(person?.member?.name || '').trim().toLowerCase().replace(/\s+/g, '-')}`
 		},
 
 		/**

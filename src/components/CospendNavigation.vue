@@ -5,7 +5,7 @@
 				label="plop"
 				:placeholder="t('cospend', 'Search projects')">
 				<template #actions>
-					<NcActions>
+					<NcActions :aria-label="t('cospend', 'Project actions')">
 						<template #icon>
 							<FolderPlusIcon :title="t('cospend', 'Create a project')" />
 						</template>
@@ -79,7 +79,7 @@
 									:key="currency"
 									class="balance-item">
 									<span class="currency-chip">{{ currency }}</span>
-									<span :class="getBalanceClass(amount)">{{ formatBalanceAmount(amount) }}</span>
+									<span class="balance-amount" :class="getBalanceClass(amount)">{{ formatBalanceAmount(amount) }}</span>
 								</div>
 							</div>
 						</template>
@@ -364,29 +364,44 @@ export default {
 }
 
 .balance-chips {
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
-	align-items: flex-end;
+	display: grid;
+	grid-template-columns: max-content max-content;
+	column-gap: 4px;
+	row-gap: 2px;
+	justify-content: end;
+	align-items: center;
 }
 
 .balance-item {
-	display: flex;
-	align-items: center;
-	gap: 6px;
+	display: contents;
+}
+
+.balance-amount {
+	grid-column: 2;
+	justify-self: start;
+	text-align: left;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+	font-feature-settings: 'tnum' 1;
 }
 
 .currency-chip {
+	grid-column: 1;
+	justify-self: end;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	min-width: 32px;
+	min-width: 2.8em;
 	padding: 1px 4px;
 	border-radius: 3px;
 	background: var(--color-background-dark);
 	font-size: 10px;
 	font-weight: 700;
+	text-align: center;
 	text-transform: uppercase;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+	font-feature-settings: 'tnum' 1;
 }
 
 .balancePositive,

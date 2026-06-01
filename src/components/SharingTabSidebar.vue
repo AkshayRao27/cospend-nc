@@ -97,7 +97,7 @@
 				<span class="username">
 					{{ t('cospend', 'Share link') }}
 				</span>
-				<NcActions>
+				<NcActions :aria-label="t('cospend', 'Public link actions')">
 					<NcActionButton>
 						<template #icon>
 							<PlusIcon :size="20" />
@@ -135,6 +135,7 @@
 					<span>{{ access.userCloudId + ( access.label ? ' ( ' + access.label + ' )' : '') }}</span>
 				</span>
 				<NcActions
+					:aria-label="t('cospend', 'Federated share actions')"
 					:force-menu="true"
 					placement="bottom">
 					<NcActionInput
@@ -195,7 +196,7 @@
 					<span>{{ t('cospend', 'Share link') + (access.label ? ' (' + access.label + ')' : '') }}</span>
 				</span>
 
-				<NcActions>
+				<NcActions :aria-label="t('cospend', 'Share link actions')">
 					<NcActionLink
 						:href="generatePublicLink(access)"
 						target="_blank"
@@ -211,7 +212,7 @@
 					</NcActionLink>
 				</NcActions>
 
-				<NcActions>
+				<NcActions :aria-label="t('cospend', 'Share link QR code actions')">
 					<NcActionLink
 						:href="generateCospendLink(access)"
 						target="_blank"
@@ -224,6 +225,7 @@
 				</NcActions>
 
 				<NcActions
+					:aria-label="t('cospend', 'Share link settings actions')"
 					:force-menu="true"
 					placement="bottom">
 					<NcActionInput
@@ -329,6 +331,7 @@
 				</span>
 
 				<NcActions
+					:aria-label="t('cospend', 'Share access actions')"
 					:force-menu="true"
 					placement="bottom">
 					<NcActionRadio name="accessLevel"

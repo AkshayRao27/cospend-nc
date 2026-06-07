@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 4.0.1 – 2026-06-01
+
+### Added
+
+- Cross-project balances view with per-person and per-currency aggregation
+- Cross-project settlement workflow supporting full and partial settlement modes
+- New OCS API endpoints for cross-project operations:
+  - `GET /apps/cospend/api/v1/cross-project-balances`
+  - `POST /apps/cospend/api/v1/cross-project-settlement`
+- Cumulative balance view customization settings in Cospend settings dialog
+- Backend service coverage for cross-project behavior in `tests/php/service/CrossProjectServiceTest.php`
+
+### Changed
+
+- Navigation cumulative balance rows now use a compact multi-currency layout with improved alignment
+- Main application flow integrates cross-project balances and settlement screens in dedicated modes
+- Cross-project settlement supports optional per-project metadata (timestamp, payment mode, comment)
+
+### Fixed
+
+- Removed duplicate "Close trashbin" action from bill list actions menu
+- Added missing accessibility labels on icon-only/action menu triggers in key UI components
+- Hardened cross-project settlement validation and error handling paths
+- Excluded archived projects and deactivated members from aggregated cross-project balances
+
 ## 4.0.0 – 2026-02-19
 
 ### Changed

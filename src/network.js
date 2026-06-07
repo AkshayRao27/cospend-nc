@@ -605,3 +605,13 @@ export function rejectInvitation(invitationId) {
 export function getRemoteAvatarUrl(cloudId) {
 	return generateOcsUrl('/apps/cospend/api/v1/remote/avatar/64?cloudId={cloudId}', { cloudId })
 }
+
+export function getCrossProjectBalances() {
+	const url = generateOcsUrl('/apps/cospend/api/v1/cross-project-balances')
+	return axios.get(url)
+}
+
+export function createCrossProjectSettlement(settlementData) {
+	const url = generateOcsUrl('/apps/cospend/api/v1/cross-project-settlement')
+	return axios.post(url, settlementData)
+}

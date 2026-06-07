@@ -1610,6 +1610,53 @@ class LocalProjectService implements IProjectService {
 	}
 
 	/**
+	 * Public wrapper around project balance computation.
+	 * Used by cross-project aggregation logic.
+	 *
+	 * @param string $projectId
+	 * @param int|null $maxTimestamp
+	 * @return array<string, float>
+	 */
+	public function getProjectBalance(string $projectId, ?int $maxTimestamp = null): array {
+		return $this->getBalance($projectId, $maxTimestamp);
+	}
+
+	/**
+	 * Circles classes are provided by another app and are not always available.
+	 *
+	 * @return mixed|null
+	 */
+	private function getCirclesManager() {
+		$ocClass = '\\OC';
+		$circlesManagerClass = '\\OCA\\Circles\\CirclesManager';
+
+		if (!class_exists($ocClass) || !class_exists($circlesManagerClass) || !isset($ocClass::$server)) {
+			return null;
+		}
+
+		try {
+			$circlesManager = $ocClass::$server->get($circlesManagerClass);
+			$circlesManager->startSuperSession();
+			return $circlesManager;
+		} catch (Exception $e) {
+			return null;
+		}
+	}
+
+	/**
+	 * @param mixed $circlesManager
+	 */
+	private function stopCirclesSession($circlesManager): void {
+		if ($circlesManager === null) {
+			return;
+		}
+		try {
+			$circlesManager->stopSession();
+		} catch (Exception $e) {
+		}
+	}
+
+	/**
 	 * Check if a user is member of a given circle
 	 *
 	 * @param string $userId
@@ -1617,35 +1664,33 @@ class LocalProjectService implements IProjectService {
 	 * @return bool
 	 */
 	private function isUserInCircle(string $userId, string $circleId): bool {
-		try {
-			$circlesManager = \OC::$server->get(\OCA\Circles\CirclesManager::class);
-			$circlesManager->startSuperSession();
-		} catch (Exception $e) {
+		$circlesManager = $this->getCirclesManager();
+		if ($circlesManager === null) {
 			return false;
 		}
 		try {
 			$circle = $circlesManager->getCircle($circleId);
-		} catch (\OCA\Circles\Exceptions\CircleNotFoundException $e) {
-			$circlesManager->stopSession();
+		} catch (Exception $e) {
+			$this->stopCirclesSession($circlesManager);
 			return false;
 		}
 		// is the circle owner
 		$owner = $circle->getOwner();
 		// the owner is also a member so this might be useless...
 		if ($owner->getUserType() === 1 && $owner->getUserId() === $userId) {
-			$circlesManager->stopSession();
+			$this->stopCirclesSession($circlesManager);
 			return true;
 		} else {
 			$members = $circle->getMembers();
 			foreach ($members as $m) {
 				// is member of this circle
 				if ($m->getUserType() === 1 && $m->getUserId() === $userId) {
-					$circlesManager->stopSession();
+					$this->stopCirclesSession($circlesManager);
 					return true;
 				}
 			}
 		}
-		$circlesManager->stopSession();
+		$this->stopCirclesSession($circlesManager);
 		return false;
 	}
 
@@ -2056,10 +2101,8 @@ class LocalProjectService implements IProjectService {
 			return [];
 		}
 
-		try {
-			$circlesManager = \OC::$server->get(\OCA\Circles\CirclesManager::class);
-			$circlesManager->startSuperSession();
-		} catch (Exception $e) {
+		$circlesManager = $this->getCirclesManager();
+		if ($circlesManager === null) {
 			return [];
 		}
 
@@ -2074,7 +2117,7 @@ class LocalProjectService implements IProjectService {
 			$jsonCircleShare['circleid'] = $circleId;
 			$jsonCircleShares[] = $jsonCircleShare;
 		}
-		$circlesManager->stopSession();
+		$this->stopCirclesSession($circlesManager);
 		return $jsonCircleShares;
 	}
 
@@ -3523,24 +3566,22 @@ class LocalProjectService implements IProjectService {
 			return ['message' => $this->l10n->t('Circles app is not enabled')];
 		}
 
-		try {
-			$circlesManager = \OC::$server->get(\OCA\Circles\CirclesManager::class);
-			$circlesManager->startSuperSession();
-		} catch (Exception $e) {
+		$circlesManager = $this->getCirclesManager();
+		if ($circlesManager === null) {
 			return ['message' => $this->l10n->t('Impossible to get the circle manager')];
 		}
 
 		try {
 			$circle = $circlesManager->getCircle($circleId);
 			$circleName = $circle->getDisplayName();
-		} catch (\OCA\Circles\Exceptions\CircleNotFoundException $e) {
-			$circlesManager->stopSession();
+		} catch (Exception $e) {
+			$this->stopCirclesSession($circlesManager);
 			return ['message' => $this->l10n->t('No such circle')];
 		}
 
 		try {
 			$existingShare = $this->shareMapper->getShareByProjectAndUser($projectId, $circleId, Share::TYPE_CIRCLE);
-			$circlesManager->stopSession();
+			$this->stopCirclesSession($circlesManager);
 			return ['message' => $this->l10n->t('Already shared with this circle')];
 		} catch (DoesNotExistException $e) {
 		}
@@ -3565,7 +3606,7 @@ class LocalProjectService implements IProjectService {
 			],
 		);
 
-		$circlesManager->stopSession();
+		$this->stopCirclesSession($circlesManager);
 		$jsonInsertedShare = $insertedShare->jsonSerialize();
 		$jsonInsertedShare['name'] = $circleName;
 		return $jsonInsertedShare;

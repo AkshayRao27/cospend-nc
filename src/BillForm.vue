@@ -39,6 +39,7 @@
 			<NcButton
 				v-if="!isNewBill && !project.deletiondisabled"
 				:title="deleteBillLabel"
+				:aria-label="deleteBillLabel"
 				variant="secondary"
 				@click="onDeleteClick">
 				<template #icon>

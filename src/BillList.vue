@@ -20,7 +20,9 @@
 						<MagnifyIcon :size="20" />
 					</template>
 				</NcTextField>
-				<NcActions :inline="1">
+				<NcActions
+					:inline="1"
+					:aria-label="t('cospend', 'Bill list actions')">
 					<NcActionButton v-if="!trashbinEnabled && editionAccess && oneActiveMember"
 						:close-after-click="true"
 						@click="onAddBillClicked">
@@ -44,14 +46,6 @@
 							<DeleteVariantIcon />
 						</template>
 						{{ t('cospend', 'Show the trash bin') }}
-					</NcActionButton>
-					<NcActionButton v-if="oneActiveMember && trashbinEnabled"
-						:close-after-click="true"
-						@click="onCloseTrashbinClicked">
-						<template #icon>
-							<ArrowLeftIcon />
-						</template>
-						{{ t('cospend', 'Close trashbin') }}
 					</NcActionButton>
 					<NcActionButton v-if="trashbinEnabled && editionAccess && bills.length > 0"
 						:close-after-click="true"
@@ -87,7 +81,7 @@
 					<div class="header">
 						<FilterIcon class="icon" :size="20" />
 						<span>{{ t('cospend', 'Filters') }}</span>
-						<NcActions>
+						<NcActions :aria-label="t('cospend', 'Filter actions')">
 							<NcActionButton
 								class="rightCloseButton"
 								@click="toggleFilterMode(true, false)">
@@ -119,7 +113,7 @@
 						<div class="header">
 							<FormatListCheckboxIcon class="icon" :size="20" />
 							<span>{{ t('cospend', 'Multi select actions') }}</span>
-							<NcActions>
+							<NcActions :aria-label="t('cospend', 'Multiple selection actions')">
 								<NcActionButton
 									class="rightCloseButton"
 									@click="toggleSelectMode">
@@ -151,7 +145,8 @@
 								</span>
 								<NcActions v-show="deletionEnabled || trashbinEnabled"
 									class="multi-actions"
-									:inline="2">
+									:inline="2"
+									:aria-label="t('cospend', 'Selected bills actions')">
 									<NcActionButton v-if="trashbinEnabled && selectedBillIds.length > 0"
 										class="multiRestore"
 										@click="showRestorationConfirmation = true">

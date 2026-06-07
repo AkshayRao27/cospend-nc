@@ -1025,6 +1025,8 @@ export default {
 						this.currentBill = {
 							...bill,
 							id: 0,
+							// Use today's date for duplicated bills
+							timestamp: moment().unix(),
 						}
 					} else {
 						const payerId = this.defaultPayerId
@@ -1062,6 +1064,8 @@ export default {
 						Object.assign(this.currentBill, {
 							...bill,
 							id: 0,
+							// Use today's date for duplicated bills
+							timestamp: moment().unix(),
 						})
 					}
 				}

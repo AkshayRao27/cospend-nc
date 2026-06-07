@@ -410,8 +410,8 @@ export default {
 	methods: {
 		handleShowSettings(): void {
 			this.showSettings = true
-			this.showMyBalance = this.cospend.showMyBalance ?? false
-			this.hideOwnBalance = this.cospend.hideOwnBalance ?? false
+			this.showMyBalance = this.cospend.showMyBalance as boolean ?? false
+			this.hideOwnBalance = this.cospend.hideOwnBalance as boolean ?? false
 			this.displayOrder = this.cospend.showSummaryFirst ? 'summary' : 'people'
 			this.hideProjectsVisibility = (this.cospend.hideProjectsByDefault ?? true) ? 'hide' : 'show'
 			this.personSortBy = this.cospend.personSortBy || 'balance'

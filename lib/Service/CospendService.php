@@ -21,8 +21,8 @@ use OCA\Cospend\Db\InvitationMapper;
 use OCA\Cospend\Db\ProjectMapper;
 use OCA\Cospend\Exception\CospendBasicException;
 use OCA\Cospend\Utils;
-use OCP\AppFramework\Http;
 use OCP\AppFramework\Db\DoesNotExistException;
+use OCP\AppFramework\Http;
 use OCP\Config\IUserConfig;
 use OCP\DB\Exception;
 use OCP\Files\File;
@@ -71,6 +71,8 @@ class CospendService {
 	 *
 	 * @param string $userId
 	 * @return array{currencyTotals: list<array{currency: string, totalOwed: float, totalOwedTo: float, netBalance: float}>, personBalances: list<array{personKey: string, member: array{name: string, userid: ?string, id: int}, currencyBalances: array<string, array{currency: string, totalBalance: float, projects: list<array{projectId: string, projectName: string, balance: float}>}>, projects: list<array{projectId: string, projectName: string, currency: string, balance: float}>}>, summary: array<string, array{currency: string, owed: list<array{member: array{name: string, userid: ?string, id: int}, amount: float}>, owedTo: list<array{member: array{name: string, userid: ?string, id: int}, amount: float}>}>}
+	 *
+	 * @psalm-suppress MoreSpecificReturnType
 	 */
 	public function getCrossProjectBalances(string $userId): array {
 		$projects = $this->localProjectService->getLocalProjects($userId);
@@ -165,6 +167,7 @@ class CospendService {
 			}
 		}
 
+		/** @psalm-suppress LessSpecificReturnStatement */
 		return [
 			'currencyTotals' => array_values($currencyTotals),
 			'personBalances' => array_values($personBalances),
@@ -202,7 +205,7 @@ class CospendService {
 				continue;
 			}
 
-			$memberBalance = (float)($balances[(string)$memberId] ?? $balances[$memberId] ?? 0.0);
+			$memberBalance = (float)($balances[(string)$memberId] ?? 0.0);
 			if (abs($memberBalance) <= 0.01) {
 				continue;
 			}

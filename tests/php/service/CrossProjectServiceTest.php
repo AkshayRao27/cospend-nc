@@ -228,7 +228,7 @@ class CrossProjectServiceTest extends TestCase {
 		$this->assertNotNull($targetEntry);
 		$this->assertNull($disabledEntry);
 
-		$projectIds = array_values(array_unique(array_map(static fn(array $p): string => $p['projectId'], $targetEntry['projects'])));
+		$projectIds = array_values(array_unique(array_map(static fn (array $p): string => $p['projectId'], $targetEntry['projects'])));
 		$this->assertContains(self::PROJECT_ACTIVE, $projectIds);
 		$this->assertNotContains(self::PROJECT_ARCHIVED, $projectIds);
 	}

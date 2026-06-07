@@ -274,6 +274,7 @@ class PageController extends Controller {
 
 				$response = new PublicTemplateResponse(Application::APP_ID, 'main', []);
 				$csp = new ContentSecurityPolicy();
+				/** @psalm-suppress UndefinedMethod */
 				$csp->allowEvalScript();
 				$response->setContentSecurityPolicy($csp);
 				$response->setHeaderDetails($this->trans->t('Project %s', [$publicShareInfo['projectid']]));
@@ -317,6 +318,7 @@ class PageController extends Controller {
 				$response->setHeaderDetails($this->trans->t('Project %s', [$info['projectid']]));
 				$response->setFooterVisible(false);
 				$csp = new ContentSecurityPolicy();
+				/** @psalm-suppress UndefinedMethod */
 				$csp->allowEvalScript();
 				$response->setContentSecurityPolicy($csp);
 				return $response;

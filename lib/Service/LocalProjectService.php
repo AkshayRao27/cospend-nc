@@ -1630,11 +1630,13 @@ class LocalProjectService implements IProjectService {
 		$ocClass = '\\OC';
 		$circlesManagerClass = '\\OCA\\Circles\\CirclesManager';
 
+		/** @psalm-suppress TypeDoesNotContainType, InvalidPropertyFetch */
 		if (!class_exists($ocClass) || !class_exists($circlesManagerClass) || !isset($ocClass::$server)) {
 			return null;
 		}
 
 		try {
+			/** @psalm-suppress InvalidPropertyFetch */
 			$circlesManager = $ocClass::$server->get($circlesManagerClass);
 			$circlesManager->startSuperSession();
 			return $circlesManager;

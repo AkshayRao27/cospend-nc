@@ -171,13 +171,13 @@ namespace OCA\Cospend;
  * }
  *
  * @psalm-type CospendProjectStatistics = array<string, mixed>
-
+ *
  * @psalm-type CospendCrossProjectBalanceSummaryItem = array{
  *     currency: string,
  *     owed: list<array{member: array{name: string, userid: ?string, id: int}, amount: float}>,
  *     owedTo: list<array{member: array{name: string, userid: ?string, id: int}, amount: float}>,
  * }
-
+ *
  * @psalm-type CospendCrossProjectBalances = array{
  *     currencyTotals: list<array{currency: string, totalOwed: float, totalOwedTo: float, netBalance: float}>,
  *     personBalances: list<array{

@@ -325,9 +325,9 @@ class BillMapper extends QBMapper {
 		bool $reverse = false, ?int $payerId = null, ?int $deleted = 0,
 	): array {
 		$qb = $this->db->getQueryBuilder();
-		$qb->select('bi.id', 'what', 'comment', 'timestamp', 'amount', 'payer_id', 'repeat',
-			'payment_mode', 'payment_mode_id', 'category_id', 'bi.last_changed', 'repeat_all_active', 'repeat_until', 'repeat_frequency',
-			'deleted', 'bo.member_id', 'm.name', 'm.weight', 'm.activated')
+		$qb->select('bi.id', 'bi.what', 'bi.comment', 'bi.timestamp', 'bi.amount', 'bi.payer_id', 'bi.repeat',
+			'bi.payment_mode', 'bi.payment_mode_id', 'bi.category_id', 'bi.last_changed', 'bi.repeat_all_active', 'bi.repeat_until', 'bi.repeat_frequency',
+			'bi.deleted', 'bo.member_id', 'm.name', 'm.weight', 'm.activated')
 			->from('cospend_bill_owers', 'bo')
 			->innerJoin('bo', 'cospend_bills', 'bi', $qb->expr()->eq('bo.bill_id', 'bi.id'))
 			->innerJoin('bo', 'cospend_members', 'm', $qb->expr()->eq('bo.member_id', 'm.id'))
@@ -347,54 +347,54 @@ class BillMapper extends QBMapper {
 		}
 		if ($tsMin !== null) {
 			$qb->andWhere(
-				$qb->expr()->gte('timestamp', $qb->createNamedParameter($tsMin, IQueryBuilder::PARAM_INT))
+				$qb->expr()->gte('bi.timestamp', $qb->createNamedParameter($tsMin, IQueryBuilder::PARAM_INT))
 			);
 		}
 		if ($tsMax !== null) {
 			$qb->andWhere(
-				$qb->expr()->lte('timestamp', $qb->createNamedParameter($tsMax, IQueryBuilder::PARAM_INT))
+				$qb->expr()->lte('bi.timestamp', $qb->createNamedParameter($tsMax, IQueryBuilder::PARAM_INT))
 			);
 		}
 		if ($deleted !== null) {
 			$qb->andWhere(
-				$qb->expr()->eq('deleted', $qb->createNamedParameter($deleted, IQueryBuilder::PARAM_INT))
+				$qb->expr()->eq('bi.deleted', $qb->createNamedParameter($deleted, IQueryBuilder::PARAM_INT))
 			);
 		}
 		if ($paymentMode !== null && $paymentMode !== '' && $paymentMode !== 'n') {
 			$qb->andWhere(
-				$qb->expr()->eq('payment_mode', $qb->createNamedParameter($paymentMode, IQueryBuilder::PARAM_STR))
+				$qb->expr()->eq('bi.payment_mode', $qb->createNamedParameter($paymentMode, IQueryBuilder::PARAM_STR))
 			);
 		} elseif (!is_null($paymentModeId)) {
 			$qb->andWhere(
-				$qb->expr()->eq('payment_mode_id', $qb->createNamedParameter($paymentModeId, IQueryBuilder::PARAM_INT))
+				$qb->expr()->eq('bi.payment_mode_id', $qb->createNamedParameter($paymentModeId, IQueryBuilder::PARAM_INT))
 			);
 		}
 		if ($category !== null) {
 			if ($category === -100) {
 				$or = $qb->expr()->orx();
-				$or->add($qb->expr()->isNull('category_id'));
-				$or->add($qb->expr()->neq('category_id', $qb->createNamedParameter(Application::CATEGORY_REIMBURSEMENT, IQueryBuilder::PARAM_INT)));
+				$or->add($qb->expr()->isNull('bi.category_id'));
+				$or->add($qb->expr()->neq('bi.category_id', $qb->createNamedParameter(Application::CATEGORY_REIMBURSEMENT, IQueryBuilder::PARAM_INT)));
 				$qb->andWhere($or);
 			} else {
 				$qb->andWhere(
-					$qb->expr()->eq('category_id', $qb->createNamedParameter($category, IQueryBuilder::PARAM_INT))
+					$qb->expr()->eq('bi.category_id', $qb->createNamedParameter($category, IQueryBuilder::PARAM_INT))
 				);
 			}
 		}
 		if ($amountMin !== null) {
 			$qb->andWhere(
-				$qb->expr()->gte('amount', $qb->createNamedParameter($amountMin, IQueryBuilder::PARAM_STR))
+				$qb->expr()->gte('bi.amount', $qb->createNamedParameter($amountMin, IQueryBuilder::PARAM_STR))
 			);
 		}
 		if ($amountMax !== null) {
 			$qb->andWhere(
-				$qb->expr()->lte('amount', $qb->createNamedParameter($amountMax, IQueryBuilder::PARAM_STR))
+				$qb->expr()->lte('bi.amount', $qb->createNamedParameter($amountMax, IQueryBuilder::PARAM_STR))
 			);
 		}
 		if ($reverse) {
-			$qb->orderBy('timestamp', 'DESC');
+			$qb->orderBy('bi.timestamp', 'DESC');
 		} else {
-			$qb->orderBy('timestamp', 'ASC');
+			$qb->orderBy('bi.timestamp', 'ASC');
 		}
 		if ($limit) {
 			$qb->setMaxResults($limit);
@@ -697,8 +697,8 @@ class BillMapper extends QBMapper {
 	public function searchBills(string $projectId, string $term, ?int $deleted = 0): array {
 		$qb = $this->db->getQueryBuilder();
 		$qb->select(
-			'b.id', 'what', 'comment', 'amount', 'timestamp',
-			'payment_mode', 'payment_mode_id', 'category_id',
+			'b.id', 'b.what', 'b.comment', 'b.amount', 'b.timestamp',
+			'b.payment_mode', 'b.payment_mode_id', 'b.category_id',
 			'pr.currency_name', 'me.name', 'me.user_id'
 		)
 			->from($this->getTableName(), 'b')
@@ -713,7 +713,7 @@ class BillMapper extends QBMapper {
 			);
 		}
 		$qb = $this->applyBillSearchTermCondition($qb, $term, 'b');
-		$qb->orderBy('timestamp', 'ASC');
+		$qb->orderBy('b.timestamp', 'ASC');
 		$req = $qb->executeQuery();
 
 		// bills by id

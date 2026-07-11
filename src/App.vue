@@ -384,6 +384,7 @@ export default {
 		subscribe('delete-bill', this.onDeleteBill)
 		subscribe('bill-moved', this.onBillMoved)
 		subscribe('bill-clicked', this.onBillClicked)
+		subscribe('reload-bills', this.onReloadBills)
 
 		subscribe('trashbin-clicked', this.onTrashbinClicked)
 		subscribe('close-trashbin', this.onCloseTrashbinClicked)
@@ -422,6 +423,7 @@ export default {
 		unsubscribe('delete-bill', this.onDeleteBill)
 		unsubscribe('bill-moved', this.onBillMoved)
 		unsubscribe('bill-clicked', this.onBillClicked)
+		unsubscribe('reload-bills', this.onReloadBills)
 
 		unsubscribe('trashbin-clicked', this.onTrashbinClicked)
 		unsubscribe('close-trashbin', this.onCloseTrashbinClicked)
@@ -648,6 +650,10 @@ export default {
 		onSetPaymentModeFilter(pmId) {
 			this.selectedPaymentModeFilter = pmId
 			this.onFilterChange()
+		},
+		onReloadBills() {
+			// bills were changed server-side (e.g. retroactive auto-categorisation)
+			this.getBills(this.cospend.currentProjectId, this.currentBill?.id, false, this.trashbinEnabled)
 		},
 		onFilterChange() {
 			// deselect current bill

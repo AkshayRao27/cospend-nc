@@ -1,13 +1,9 @@
 <?php
 
+declare(strict_types=1);
 /**
- * Nextcloud - cospend
- *
- * This file is licensed under the Affero General Public License version 3 or
- * later. See the COPYING file.
- *
- * @author Julien Veyssier <julien-nc@posteo.net>
- * @copyright Julien Veyssier 2023
+ * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
 namespace OCA\Cospend\Controller;
@@ -24,11 +20,9 @@ use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\Http\FileDisplayResponse;
 use OCP\AppFramework\Http\RedirectResponse;
 use OCP\AppFramework\OCSController;
-
 use OCP\DB\Exception;
 use OCP\Federation\ICloudIdManager;
 use OCP\IAvatarManager;
-
 use OCP\IRequest;
 use OCP\IURLGenerator;
 use OCP\IUser;

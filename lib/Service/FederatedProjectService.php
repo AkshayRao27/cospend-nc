@@ -1,13 +1,9 @@
 <?php
 
+declare(strict_types=1);
 /**
- * Nextcloud - Cospend
- *
- * This file is licensed under the Affero General Public License version 3 or
- * later. See the COPYING file.
- *
- * @author Julien Veyssier
- * @copyright Julien Veyssier 2024
+ * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
 namespace OCA\Cospend\Service;
@@ -359,7 +355,6 @@ class FederatedProjectService implements IProjectService {
 		];
 		return $this->request($projectId, 'api/v1/public/projects/{token}/{password}/paymentmode', $params, 'POST');
 	}
-
 
 	public function editPaymentMode(string $projectId, int $pmId, ?string $name = null, ?string $icon = null, ?string $color = null): array {
 		$params = [

@@ -1,13 +1,9 @@
 <?php
 
+declare(strict_types=1);
 /**
- * Nextcloud - cospend
- *
- * This file is licensed under the Affero General Public License version 3 or
- * later. See the COPYING file.
- *
- * @author Julien Veyssier <julien-nc@posteo.net>
- * @copyright Julien Veyssier 2023
+ * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
 namespace OCA\Cospend\Controller;
@@ -33,9 +29,7 @@ use OCP\AppFramework\Http\Attribute\OpenAPI;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\OCSController;
 use OCP\Constants;
-
 use OCP\DB\Exception;
-
 use OCP\Exceptions\AppConfigTypeConflictException;
 use OCP\Files\File;
 use OCP\Files\InvalidPathException;
@@ -43,7 +37,6 @@ use OCP\Files\IRootFolder;
 use OCP\Files\NotFoundException;
 use OCP\Files\NotPermittedException;
 use OCP\IL10N;
-
 use OCP\IRequest;
 use OCP\Lock\LockedException;
 use OCP\Share\IManager;
@@ -567,12 +560,13 @@ class ApiController extends OCSController {
 	 * @param string $projectId
 	 * @param int $billId
 	 * @param string $toProjectId
-	 * @return DataResponse<Http::STATUS_OK, int, array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>|DataResponse<Http::STATUS_UNAUTHORIZED, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, int, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_NOT_FOUND, array{message: string}, array{}>|DataResponse<Http::STATUS_UNAUTHORIZED, array{message: string}, array{}>
 	 * @throws Exception
 	 *
 	 * 200: The bill was moved successfully
 	 * 401: Current user is not allowed to create a bill in the target project
 	 * 400: Failed to move the bill
+	 * 404: The bill to move was not found
 	 */
 	#[NoAdminRequired]
 	#[CospendUserPermissions(minimumLevel: Application::ACCESS_LEVEL_PARTICIPANT)]
@@ -584,7 +578,10 @@ class ApiController extends OCSController {
 		}
 
 		// get current bill from mapper for the activity manager
-		$oldBillObj = $this->billMapper->find($billId);
+		$oldBillObj = $this->billMapper->getBillEntity($projectId, $billId);
+		if ($oldBillObj === null) {
+			return new DataResponse(['message' => $this->l->t('The bill was not found')], Http::STATUS_NOT_FOUND);
+		}
 
 		// update the bill information
 		$result = $this->localProjectService->moveBill($projectId, $billId, $toProjectId);
@@ -1067,7 +1064,6 @@ class ApiController extends OCSController {
 		}
 	}
 
-
 	/**
 	 * Save categories order
 	 *
@@ -1518,7 +1514,10 @@ class ApiController extends OCSController {
 	#[NoAdminRequired]
 	#[OpenAPI(scope: OpenAPI::SCOPE_DEFAULT, tags: ['Sharing'])]
 	public function getPublicFileShare(string $path): DataResponse {
-		$cleanPath = str_replace(['../', '..\\'], '', $path);
+		if (str_contains($path, '..')) {
+			return new DataResponse(['message' => $this->l->t('Access denied')], Http::STATUS_UNAUTHORIZED);
+		}
+		$cleanPath = $path;
 		$userFolder = $this->root->getUserFolder($this->userId);
 		if (!$userFolder->nodeExists($cleanPath)) {
 			return new DataResponse(['message' => $this->l->t('Access denied')], Http::STATUS_UNAUTHORIZED);

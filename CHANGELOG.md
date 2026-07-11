@@ -4,7 +4,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## 4.0.1 – 2026-06-01
+### Changed
+
+- **Breaking change** Improve the `occ cospend:export-project` command. Remove the second argument (file name). Added 2 new options to choose the storage export file name and the filesystem export file name
+
+## 4.0.2 – 2026-06-17
+
+### Added
+
+- Support for Nextcloud 35
+
+### Changed
+
+- Update duplicated bills to use current timestamp @AkshayRao27 [#398](https://github.com/julien-nc/cospend-nc/pull/398)
+- Add federation capability check @miaulalala [#389](https://github.com/julien-nc/cospend-nc/pull/389)
+
+### Fixed
+
+- Fix federation URL normalisation and pending shares @miaulalala [#388](https://github.com/julien-nc/cospend-nc/pull/388)
+- Fix import project ID, avoid empty project ID, add suffix on collision
+- Fix getting primary color, use capabilities
+- Delete shares to a user when it's deleted, early return in getUserMaxAccessLevel when the user does not exist (credits to @dizconnectz)
+- Get rid of IServerContainer::getDatabaseConnection that was removed
+- Get rid of IServerContainer::getActivityManager that was removed
+- Remove csp->allowEvalScript that was removed in Nextcloud 34
+
+## Fork-only – 2026-06-01 (cross-project balances and settlement)
 
 ### Added
 

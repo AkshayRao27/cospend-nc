@@ -1,13 +1,9 @@
 <?php
 
+declare(strict_types=1);
 /**
- * Nextcloud - cospend
- *
- * This file is licensed under the Affero General Public License version 3 or
- * later. See the COPYING file.
- *
- * @author Julien Veyssier <julien-nc@posteo.net>
- * @copyright Julien Veyssier 2019
+ * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
 namespace OCA\Cospend\Notification;
@@ -89,7 +85,6 @@ class Notifier implements INotifier {
 						->setIcon($iconUrl);
 				}
 				return $notification;
-
 			case 'delete_user_share':
 				$p = $notification->getSubjectParameters();
 				$fromUserId = $p[0];
@@ -127,7 +122,6 @@ class Notifier implements INotifier {
 						->setIcon($iconUrl);
 				}
 				return $notification;
-
 			case 'remote_cospend_share':
 				// $inviteId = (int)$notification->getObjectId();
 				$p = $notification->getSubjectParameters();
@@ -149,7 +143,6 @@ class Notifier implements INotifier {
 					->setLink($this->url->linkToRouteAbsolute('cospend.page.index'))
 					->setIcon($iconUrl);
 				return $notification;
-
 			default:
 				// Unknown subject => Unknown notification => throw
 				throw new InvalidArgumentException();

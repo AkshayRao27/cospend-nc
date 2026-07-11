@@ -1,13 +1,9 @@
 <?php
 
+declare(strict_types=1);
 /**
- * Nextcloud - cospend
- *
- * This file is licensed under the Affero General Public License version 3 or
- * later. See the COPYING file.
- *
- * @author Julien Veyssier
- * @copyright Julien Veyssier 2019
+ * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
 namespace OCA\Cospend\Service;
@@ -21,7 +17,6 @@ use OCA\Cospend\Activity\ActivityManager;
 use OCA\Cospend\AppInfo\Application;
 use OCA\Cospend\Db\Bill;
 use OCA\Cospend\Db\BillMapper;
-
 use OCA\Cospend\Db\BillOwer;
 use OCA\Cospend\Db\BillOwerMapper;
 use OCA\Cospend\Db\Category;
@@ -46,14 +41,11 @@ use OCP\AppFramework\Db\MultipleObjectsReturnedException;
 use OCP\AppFramework\Http;
 use OCP\Config\IUserConfig;
 use OCP\DB\QueryBuilder\IQueryBuilder;
-
 use OCP\Exceptions\AppConfigTypeConflictException;
 use OCP\Federation\ICloudIdManager;
-
 use OCP\IAppConfig;
 use OCP\IConfig;
 use OCP\IDateTimeZone;
-
 use OCP\IDBConnection;
 use OCP\IGroupManager;
 use OCP\IL10N;
@@ -211,6 +203,11 @@ class LocalProjectService implements IProjectService {
 			if ($dbProject->getUserId() === $userId) {
 				return Application::ACCESS_LEVEL_ADMIN;
 			} else {
+				$user = $this->userManager->get($userId);
+				if ($user === null) {
+					return Application::ACCESS_LEVEL_NONE;
+				}
+
 				// is the project shared with the user ?
 				try {
 					$userShare = $this->shareMapper->getShareByProjectAndUser($projectId, $userId, Share::TYPE_USER);
@@ -221,8 +218,6 @@ class LocalProjectService implements IProjectService {
 				}
 
 				// is the project shared with a group containing the user?
-				$user = $this->userManager->get($userId);
-
 				$groupShares = $this->shareMapper->getSharesOfProject($projectId, Share::TYPE_GROUP);
 				foreach ($groupShares as $groupShare) {
 					$groupId = $groupShare->getUserId();
@@ -968,8 +963,11 @@ class LocalProjectService implements IProjectService {
 			throw new CospendBasicException('payer is not valid', Http::STATUS_BAD_REQUEST);
 		}
 		// check owers
+		if ($payedFor === null || $payedFor === '') {
+			throw new CospendBasicException('payed_for is not valid (' . $payedFor . ')', Http::STATUS_BAD_REQUEST);
+		}
 		$owerIds = explode(',', $payedFor);
-		if ($payedFor === null || $payedFor === '' || empty($owerIds)) {
+		if (empty($owerIds)) {
 			throw new CospendBasicException('payed_for is not valid (' . $payedFor . ')', Http::STATUS_BAD_REQUEST);
 		}
 		foreach ($owerIds as $owerId) {

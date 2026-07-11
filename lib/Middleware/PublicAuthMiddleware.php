@@ -1,6 +1,10 @@
 <?php
 
 declare(strict_types=1);
+/**
+ * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
 
 namespace OCA\Cospend\Middleware;
 
@@ -12,7 +16,6 @@ use OCA\Cospend\Db\Invitation;
 use OCA\Cospend\Db\Share;
 use OCA\Cospend\Db\ShareMapper;
 use OCA\Cospend\Exception\CospendPublicAuthNotValidException;
-
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;

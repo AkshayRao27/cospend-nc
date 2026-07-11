@@ -639,11 +639,23 @@
                     "cospend": {
                         "type": "object",
                         "required": [
-                            "version"
+                            "version",
+                            "federation"
                         ],
                         "properties": {
                             "version": {
                                 "type": "string"
+                            },
+                            "federation": {
+                                "type": "object",
+                                "required": [
+                                    "enabled"
+                                ],
+                                "properties": {
+                                    "enabled": {
+                                        "type": "boolean"
+                                    }
+                                }
                             }
                         }
                     }
@@ -6579,6 +6591,44 @@
                     },
                     "400": {
                         "description": "Failed to move the bill",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "message"
+                                                    ],
+                                                    "properties": {
+                                                        "message": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The bill to move was not found",
                         "content": {
                             "application/json": {
                                 "schema": {

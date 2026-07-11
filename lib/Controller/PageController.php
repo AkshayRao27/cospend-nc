@@ -1,13 +1,9 @@
 <?php
 
+declare(strict_types=1);
 /**
- * Nextcloud - cospend
- *
- * This file is licensed under the Affero General Public License version 3 or
- * later. See the COPYING file.
- *
- * @author Julien Veyssier <eneiluj@posteo.net>
- * @copyright Julien Veyssier 2019
+ * SPDX-FileCopyrightText: 2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
 namespace OCA\Cospend\Controller;
@@ -33,14 +29,12 @@ use OCP\AppFramework\Http\Response;
 use OCP\AppFramework\Http\Template\PublicTemplateResponse;
 use OCP\AppFramework\Http\TemplateResponse;
 use OCP\AppFramework\Services\IInitialState;
-
 use OCP\Collaboration\Reference\RenderReferenceEvent;
 use OCP\Config\IUserConfig;
 use OCP\DB\Exception;
 use OCP\EventDispatcher\IEventDispatcher;
 use OCP\IAppConfig;
 use OCP\IConfig;
-
 use OCP\IL10N;
 use OCP\IRequest;
 use OCP\PreConditionNotMetException;
@@ -275,8 +269,6 @@ class PageController extends Controller {
 
 				$response = new PublicTemplateResponse(Application::APP_ID, 'main', []);
 				$csp = new ContentSecurityPolicy();
-				/** @psalm-suppress UndefinedMethod */
-				$csp->allowEvalScript();
 				$response->setContentSecurityPolicy($csp);
 				$response->setHeaderDetails($this->trans->t('Project %s', [$publicShareInfo['projectid']]));
 			}
@@ -319,8 +311,6 @@ class PageController extends Controller {
 				$response->setHeaderDetails($this->trans->t('Project %s', [$info['projectid']]));
 				$response->setFooterVisible(false);
 				$csp = new ContentSecurityPolicy();
-				/** @psalm-suppress UndefinedMethod */
-				$csp->allowEvalScript();
 				$response->setContentSecurityPolicy($csp);
 				return $response;
 			} elseif (!is_null($info['projectid'] ?? null)) {

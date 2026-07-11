@@ -4,9 +4,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 4.0.4 – 2026-07-11 (fork release)
+
+### Added
+
+- Auto-categorisation of bills based on their title: per-project title → category mappings,
+  applied on bill creation/edition and on blur in the bill form, with a management UI in the
+  Categories tab, copy/import between projects, retroactive apply, per-project and instance-wide
+  toggles, and `occ cospend:auto-categorize:project|all` commands
+
 ### Changed
 
-- **Breaking change** Improve the `occ cospend:export-project` command. Remove the second argument (file name). Added 2 new options to choose the storage export file name and the filesystem export file name
+- Synced with upstream main (4.0.2 plus unreleased changes: REUSE migration, stricter moveBill, export-project rework)
+- **Breaking change** (from upstream) Improve the `occ cospend:export-project` command. Remove the second argument (file name). Added 2 new options to choose the storage export file name and the filesystem export file name
 
 ## 4.0.2 – 2026-06-17
 

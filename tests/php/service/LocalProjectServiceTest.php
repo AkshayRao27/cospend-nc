@@ -135,6 +135,12 @@ class LocalProjectServiceTest extends TestCase {
 			'tsl',
 			'tdm',
 			'testGetSettlement',
+			'tdpm1',
+			'tdpm2',
+			'tdpm3',
+			'tdpm4',
+			'tdpm5',
+			'tdpm6',
 		];
 		foreach ($projIds as $projId) {
 			try {
@@ -1658,6 +1664,183 @@ class LocalProjectServiceTest extends TestCase {
 		$resp = $this->apiController->deleteProject('superprojS');
 		$status = $resp->getStatus();
 		$this->assertEquals(Http::STATUS_OK, $status);
+	}
+
+	/**
+	 * Find a project payment mode by its legacy old_id, so the legacy 'payment_mode' char can be
+	 * asserted. Payment modes created through the API have no old_id, but the defaults a new
+	 * project gets do.
+	 */
+	private function getPaymentModeIdByOldId(string $projectId, string $oldId): int {
+		$paymentModes = $this->localProjectService->getCategoriesOrPaymentModes($projectId, false);
+		foreach ($paymentModes as $id => $pm) {
+			if (($pm['old_id'] ?? null) === $oldId) {
+				return (int)$id;
+			}
+		}
+		$this->fail('no payment mode with old_id ' . $oldId . ' in ' . $projectId);
+	}
+
+	public function testEditCategoryDefaultPaymentMode() {
+		$projectId = 'tdpm1';
+		$this->createAndPopulateProject($projectId);
+		$pmId = $this->getPaymentModeIdByOldId($projectId, 'c');
+
+		$resp = $this->apiController->createCategory($projectId, 'groceries', 'i', '#123465', 2);
+		$this->assertEquals(Http::STATUS_OK, $resp->getStatus());
+		$catId = $resp->getData();
+
+		// a new category has no default
+		$this->assertEquals(0, $this->localProjectService->getCategoryDefaultPaymentMode($projectId, $catId));
+
+		// set it
+		$resp = $this->apiController->editCategory($projectId, $catId, 'groceries', 'i', '#123465', $pmId);
+		$this->assertEquals(Http::STATUS_OK, $resp->getStatus());
+		$this->assertEquals($pmId, $resp->getData()['default_payment_mode_id']);
+		$this->assertEquals($pmId, $this->localProjectService->getCategoryDefaultPaymentMode($projectId, $catId));
+
+		// omitting it leaves it unchanged
+		$resp = $this->apiController->editCategory($projectId, $catId, 'groceries renamed', 'i', '#123465');
+		$this->assertEquals(Http::STATUS_OK, $resp->getStatus());
+		$this->assertEquals($pmId, $resp->getData()['default_payment_mode_id']);
+
+		// 0 clears it
+		$resp = $this->apiController->editCategory($projectId, $catId, 'groceries', 'i', '#123465', 0);
+		$this->assertEquals(Http::STATUS_OK, $resp->getStatus());
+		$this->assertEquals(0, $resp->getData()['default_payment_mode_id']);
+
+		// a payment mode id from another project is rejected
+		$otherProjectId = 'tdpm2';
+		$this->createAndPopulateProject($otherProjectId);
+		$foreignPmId = $this->getPaymentModeIdByOldId($otherProjectId, 'c');
+		$resp = $this->apiController->editCategory($projectId, $catId, 'groceries', 'i', '#123465', $foreignPmId);
+		$this->assertEquals(Http::STATUS_BAD_REQUEST, $resp->getStatus());
+		$this->assertEquals(0, $this->localProjectService->getCategoryDefaultPaymentMode($projectId, $catId));
+
+		$this->localProjectService->deleteProject($otherProjectId);
+		$this->localProjectService->deleteProject($projectId);
+	}
+
+	public function testCreateBillInheritsCategoryDefaultPaymentMode() {
+		$projectId = 'tdpm3';
+		$this->createAndPopulateProject($projectId);
+		$member1 = $this->localProjectService->getMemberByName($projectId, 'member1');
+		$member2 = $this->localProjectService->getMemberByName($projectId, 'member2');
+		$cardPmId = $this->getPaymentModeIdByOldId($projectId, 'c');
+		$cashPmId = $this->getPaymentModeIdByOldId($projectId, 'b');
+
+		$resp = $this->apiController->createCategory($projectId, 'groceries', 'i', '#123465', 2);
+		$catId = $resp->getData();
+		$resp = $this->apiController->editCategory($projectId, $catId, 'groceries', 'i', '#123465', $cardPmId);
+		$this->assertEquals(Http::STATUS_OK, $resp->getStatus());
+
+		// no payment mode given => the category default is used, and the LEGACY char is derived too.
+		// The legacy column is what classic mode filters and exports read, so asserting only
+		// payment_mode_id here would pass with the lookup in the wrong place.
+		$resp = $this->apiController->createBill(
+			$projectId, '2019-01-22', 'rewe', $member1['id'],
+			$member1['id'] . ',' . $member2['id'], 22.5, Application::FREQUENCY_NO, null, null, $catId
+		);
+		$this->assertEquals(Http::STATUS_OK, $resp->getStatus());
+		$bill = $this->billMapper->getBill($projectId, $resp->getData());
+		$this->assertEquals($cardPmId, $bill['paymentmodeid']);
+		$this->assertEquals('c', $bill['paymentmode']);
+
+		// an explicit payment mode wins over the category default
+		$resp = $this->apiController->createBill(
+			$projectId, '2019-01-22', 'rewe', $member1['id'],
+			$member1['id'] . ',' . $member2['id'], 22.5, Application::FREQUENCY_NO, null, $cashPmId, $catId
+		);
+		$this->assertEquals(Http::STATUS_OK, $resp->getStatus());
+		$bill = $this->billMapper->getBill($projectId, $resp->getData());
+		$this->assertEquals($cashPmId, $bill['paymentmodeid']);
+		$this->assertEquals('b', $bill['paymentmode']);
+
+		// no category => no default to inherit
+		$resp = $this->apiController->createBill(
+			$projectId, '2019-01-22', 'nothing', $member1['id'],
+			$member1['id'] . ',' . $member2['id'], 22.5, Application::FREQUENCY_NO, null, null, null
+		);
+		$this->assertEquals(Http::STATUS_OK, $resp->getStatus());
+		$bill = $this->billMapper->getBill($projectId, $resp->getData());
+		$this->assertEquals(0, $bill['paymentmodeid']);
+
+		// a category whose default payment mode was deleted falls back to none
+		$resp = $this->apiController->editCategory($projectId, $catId, 'groceries', 'i', '#123465', $cardPmId);
+		$this->assertEquals(Http::STATUS_OK, $resp->getStatus());
+		$resp = $this->apiController->deletePaymentMode($projectId, $cardPmId);
+		$this->assertEquals(Http::STATUS_OK, $resp->getStatus());
+		$this->assertEquals(0, $this->localProjectService->getCategoryDefaultPaymentMode($projectId, $catId));
+
+		$this->localProjectService->deleteProject($projectId);
+	}
+
+	public function testEditBillCategoryDefaultPaymentMode() {
+		$projectId = 'tdpm4';
+		$this->createAndPopulateProject($projectId);
+		$member1 = $this->localProjectService->getMemberByName($projectId, 'member1');
+		$member2 = $this->localProjectService->getMemberByName($projectId, 'member2');
+		$cardPmId = $this->getPaymentModeIdByOldId($projectId, 'c');
+		$cashPmId = $this->getPaymentModeIdByOldId($projectId, 'b');
+
+		$resp = $this->apiController->createCategory($projectId, 'groceries', 'i', '#123465', 2);
+		$catId = $resp->getData();
+		$this->apiController->editCategory($projectId, $catId, 'groceries', 'i', '#123465', $cardPmId);
+
+		// a bill with neither category nor payment mode picks up the default when categorised
+		$resp = $this->apiController->createBill(
+			$projectId, '2019-01-22', 'rewe', $member1['id'],
+			$member1['id'] . ',' . $member2['id'], 22.5, Application::FREQUENCY_NO
+		);
+		$this->assertEquals(Http::STATUS_OK, $resp->getStatus());
+		$billId = $resp->getData();
+		$resp = $this->apiController->editBill($projectId, $billId, null, null, null, null, null, null, null, null, $catId);
+		$this->assertEquals(Http::STATUS_OK, $resp->getStatus());
+		$bill = $this->billMapper->getBill($projectId, $billId);
+		$this->assertEquals($cardPmId, $bill['paymentmodeid']);
+		$this->assertEquals('c', $bill['paymentmode']);
+
+		// a bill that already has a payment mode keeps it when its category changes
+		$resp = $this->apiController->createCategory($projectId, 'other', 'i', '#654321', 3);
+		$otherCatId = $resp->getData();
+		$this->apiController->editCategory($projectId, $otherCatId, 'other', 'i', '#654321', $cashPmId);
+		$resp = $this->apiController->editBill($projectId, $billId, null, null, null, null, null, null, null, null, $otherCatId);
+		$this->assertEquals(Http::STATUS_OK, $resp->getStatus());
+		$bill = $this->billMapper->getBill($projectId, $billId);
+		$this->assertEquals($cardPmId, $bill['paymentmodeid']);
+		$this->assertEquals('c', $bill['paymentmode']);
+
+		$this->localProjectService->deleteProject($projectId);
+	}
+
+	public function testCategoryDefaultPaymentModeIsProjectScoped() {
+		// the same category name in two projects, defaulting to different payment modes
+		$this->createAndPopulateProject('tdpm5');
+		$this->createAndPopulateProject('tdpm6');
+
+		$cardPmId = $this->getPaymentModeIdByOldId('tdpm5', 'c');
+		$cashPmId = $this->getPaymentModeIdByOldId('tdpm6', 'b');
+
+		$catId1 = $this->apiController->createCategory('tdpm5', 'groceries', 'i', '#123465', 2)->getData();
+		$catId2 = $this->apiController->createCategory('tdpm6', 'groceries', 'i', '#123465', 2)->getData();
+		$this->apiController->editCategory('tdpm5', $catId1, 'groceries', 'i', '#123465', $cardPmId);
+		$this->apiController->editCategory('tdpm6', $catId2, 'groceries', 'i', '#123465', $cashPmId);
+
+		foreach ([['tdpm5', $catId1, $cardPmId, 'c'], ['tdpm6', $catId2, $cashPmId, 'b']] as [$projectId, $catId, $pmId, $oldId]) {
+			$member1 = $this->localProjectService->getMemberByName($projectId, 'member1');
+			$member2 = $this->localProjectService->getMemberByName($projectId, 'member2');
+			$resp = $this->apiController->createBill(
+				$projectId, '2019-01-22', 'groceries', $member1['id'],
+				$member1['id'] . ',' . $member2['id'], 10.0, Application::FREQUENCY_NO, null, null, $catId
+			);
+			$this->assertEquals(Http::STATUS_OK, $resp->getStatus());
+			$bill = $this->billMapper->getBill($projectId, $resp->getData());
+			$this->assertEquals($pmId, $bill['paymentmodeid']);
+			$this->assertEquals($oldId, $bill['paymentmode']);
+		}
+
+		$this->localProjectService->deleteProject('tdpm5');
+		$this->localProjectService->deleteProject('tdpm6');
 	}
 
 	public function createAndPopulateProject($projectId): ?array {

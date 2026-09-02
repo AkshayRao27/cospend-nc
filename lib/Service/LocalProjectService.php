@@ -986,6 +986,14 @@ class LocalProjectService implements IProjectService {
 				throw new CospendBasicException('payed_for is not valid', Http::STATUS_BAD_REQUEST);
 			}
 		}
+		// auto payment mode: inherit the category's default when the caller gave no payment mode.
+		// This must stay ABOVE the block below, which derives the legacy 'payment_mode' char.
+		if ($paymentModeId === null && $paymentMode === null && $categoryId !== null && $categoryId !== 0) {
+			$defaultPmId = $this->getCategoryDefaultPaymentMode($projectId, $categoryId);
+			if ($defaultPmId > 0) {
+				$paymentModeId = $defaultPmId;
+			}
+		}
 		// payment mode
 		if (!is_null($paymentModeId)) {
 			// is the old_id set for this payment mode? if yes, use it for old 'paymentmode' column
@@ -2238,6 +2246,17 @@ class LocalProjectService implements IProjectService {
 		if ($repeatAllActive !== null) {
 			$dbBill->setRepeatAllActive($repeatAllActive);
 		}
+		// auto payment mode: inherit the category's default only when neither the request nor the
+		// stored bill has a payment mode. Must stay ABOVE the legacy char derivation below.
+		if ($paymentModeId === null && $paymentMode === null && (int)$dbBill->getPaymentModeId() === 0) {
+			$effectiveCategoryId = $categoryId ?? (int)$dbBill->getCategoryId();
+			if ($effectiveCategoryId !== 0) {
+				$defaultPmId = $this->getCategoryDefaultPaymentMode($projectId, $effectiveCategoryId);
+				if ($defaultPmId > 0) {
+					$paymentModeId = $defaultPmId;
+				}
+			}
+		}
 		// payment mode
 		if ($paymentModeId !== null) {
 			// is the old_id set for this payment mode? if yes, use it for old 'paymentmode' column
@@ -2930,6 +2949,7 @@ class LocalProjectService implements IProjectService {
 	 */
 	public function editCategory(
 		string $projectId, int $categoryId, ?string $name = null, ?string $icon = null, ?string $color = null,
+		?int $defaultPaymentModeId = null,
 	): array {
 		if ($name === null || $name === '') {
 			throw new CospendBasicException('', Http::STATUS_BAD_REQUEST, ['message' => $this->l10n->t('Incorrect field values')]);
@@ -2938,8 +2958,51 @@ class LocalProjectService implements IProjectService {
 		$category->setName($name);
 		$category->setColor($color);
 		$category->setEncodedIcon(($icon !== null && $icon !== '') ? urlencode($icon) : $icon);
+		if ($defaultPaymentModeId !== null) {
+			// 0 clears the default; anything else must be a payment mode of this project
+			if ($defaultPaymentModeId !== 0) {
+				$projectPaymentModes = $this->getCategoriesOrPaymentModes($projectId, false);
+				if (!array_key_exists((string)$defaultPaymentModeId, $projectPaymentModes)) {
+					throw new CospendBasicException('', Http::STATUS_BAD_REQUEST, ['message' => $this->l10n->t('Incorrect field values')]);
+				}
+			}
+			$category->setDefaultPaymentModeId($defaultPaymentModeId);
+		}
 		$editedCategory = $this->categoryMapper->update($category);
 		return $editedCategory->jsonSerialize();
+	}
+
+	/**
+	 * Get a category's default payment mode, if it still points at a live payment mode.
+	 *
+	 * A payment mode that has since been deleted leaves a stale id behind; it is validated
+	 * here rather than cleaned up on deletion, so a stale id is inert and self-heals on the
+	 * next category edit.
+	 *
+	 * @param string $projectId
+	 * @param int $categoryId
+	 * @return int the payment mode id, or 0 if there is no usable default
+	 * @throws \OCP\DB\Exception
+	 */
+	public function getCategoryDefaultPaymentMode(string $projectId, int $categoryId): int {
+		try {
+			$category = $this->categoryMapper->getCategoryOfProject($projectId, $categoryId);
+		} catch (DoesNotExistException|MultipleObjectsReturnedException) {
+			return 0;
+		}
+		$defaultPaymentModeId = (int)$category->getDefaultPaymentModeId();
+		if ($defaultPaymentModeId === 0) {
+			return 0;
+		}
+		// Checked against the mapper rather than the $this->paymentModes cache: that cache is a
+		// plain instance property with no project key, so in a request touching more than one
+		// project it holds whichever project got there first.
+		try {
+			$this->paymentModeMapper->getPaymentModeOfProject($projectId, $defaultPaymentModeId);
+		} catch (DoesNotExistException|MultipleObjectsReturnedException) {
+			return 0;
+		}
+		return $defaultPaymentModeId;
 	}
 
 	/**

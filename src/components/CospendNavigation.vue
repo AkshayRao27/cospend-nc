@@ -335,6 +335,7 @@ export default {
 	},
 }
 </script>
+
 <style scoped lang="scss">
 :deep(.app-navigation-entry-wrapper) {
 	display: flex !important;

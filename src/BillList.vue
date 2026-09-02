@@ -394,6 +394,12 @@ export default {
 		},
 	},
 
+	emits: [
+		'duplicate-bill', 'load-more-bills', 'new-bill-clicked', 'move-bill-clicked',
+		'reset-filters', 'set-category-filter', 'set-paymentmode-filter', 'reset-selection',
+		'items-deleted', 'multi-bill-edit',
+	],
+
 	data() {
 		return {
 			cospend: OCA.Cospend.state,
@@ -441,18 +447,18 @@ export default {
 				constants.SORT_ORDER.RECENTLY_USED,
 			].includes(this.project.paymentmodesort)
 				? allPaymentModes.sort((a, b) => {
-					return a.order === b.order
-						? strcmp(a.name, b.name)
-						: a.order > b.order
-							? 1
-							: a.order < b.order
-								? -1
-								: 0
-				})
+						return a.order === b.order
+							? strcmp(a.name, b.name)
+							: a.order > b.order
+								? 1
+								: a.order < b.order
+									? -1
+									: 0
+					})
 				: this.project.paymentmodesort === constants.SORT_ORDER.ALPHA
 					? allPaymentModes.sort((a, b) => {
-						return strcmp(a.name, b.name)
-					})
+							return strcmp(a.name, b.name)
+						})
 					: allPaymentModes
 		},
 		sortedFilterPms() {
@@ -493,18 +499,18 @@ export default {
 				constants.SORT_ORDER.RECENTLY_USED,
 			].includes(this.project.categorysort)
 				? allCategories.sort((a, b) => {
-					return a.order === b.order
-						? strcmp(a.name, b.name)
-						: a.order > b.order
-							? 1
-							: a.order < b.order
-								? -1
-								: 0
-				})
+						return a.order === b.order
+							? strcmp(a.name, b.name)
+							: a.order > b.order
+								? 1
+								: a.order < b.order
+									? -1
+									: 0
+					})
 				: this.project.categorysort === constants.SORT_ORDER.ALPHA
 					? allCategories.sort((a, b) => {
-						return strcmp(a.name, b.name)
-					})
+							return strcmp(a.name, b.name)
+						})
 					: allCategories
 		},
 		sortedFilterCategories() {
@@ -563,17 +569,17 @@ export default {
 		deletionConfirmationMessage() {
 			return this.trashbinEnabled
 				? n('cospend',
-					'Are you sure you want to delete {nb} bill?',
-					'Are you sure you want to delete {nb} bills?',
-					this.selectedBillIds.length,
-					{ nb: this.selectedBillIds.length },
-				)
+						'Are you sure you want to delete {nb} bill?',
+						'Are you sure you want to delete {nb} bills?',
+						this.selectedBillIds.length,
+						{ nb: this.selectedBillIds.length },
+					)
 				: n('cospend',
-					'Are you sure you want to move {nb} bill to the trash bin?',
-					'Are you sure you want to move {nb} bills to the trash bin?',
-					this.selectedBillIds.length,
-					{ nb: this.selectedBillIds.length },
-				)
+						'Are you sure you want to move {nb} bill to the trash bin?',
+						'Are you sure you want to move {nb} bills to the trash bin?',
+						this.selectedBillIds.length,
+						{ nb: this.selectedBillIds.length },
+					)
 		},
 		restorationConfirmationMessage() {
 			return n('cospend',

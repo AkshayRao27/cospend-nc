@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 4.1.3 – 2026-09-02 (fork release)
+
+### Changed
+
+- Synced with upstream 4.1.2 (Nextcloud 36 support, access-level check refactor, REUSE migration,
+  eslint flat config, Vue 3 component renames)
+
+### Fixed
+
+- Auto-categorise `occ` commands now declare the `: int` return type required by the Symfony
+  Console version shipped with 4.1.x
+- Cross-project balance view now cleans up pending requests via `beforeUnmount` (`beforeDestroy`
+  is inert under Vue 3)
+
 ## 4.0.4 – 2026-07-11 (fork release)
 
 ### Added
@@ -17,6 +31,29 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Synced with upstream main (4.0.2 plus unreleased changes: REUSE migration, stricter moveBill, export-project rework)
 - **Breaking change** (from upstream) Improve the `occ cospend:export-project` command. Remove the second argument (file name). Added 2 new options to choose the storage export file name and the filesystem export file name
+## 4.1.2 – 2026-09-01
+
+### Added
+
+- Support for Nextcloud 36
+
+### Changed
+
+- **Breaking change** Improve the `occ cospend:export-project` command. Remove the second argument (file name). Added 2 new options to choose the storage export file name and the filesystem export file name @julien-nc
+- Refactor access level checks, move from API controller to service @julien-nc
+- Allow smaller status icons in avatars @julien-nc
+- Add link to Cowspent client app, add icon for clients @julien-nc
+- Migrate to REUSE for licensing compliance @julien-nc
+- Only import vuejs-smart-table where it's used @julien-nc
+
+### Fixed
+
+- Fix app icon, remove unused PNG so the app settings picks the SVG @julien-nc
+- Hide activity settings when Cospend is disabled for the current user (limit app to groups) @julien-nc [#404](https://github.com/julien-nc/cospend-nc/issues/404)
+- Reject paths containing '..' in API endpoints @julien-nc
+- Make moveBill stricter @julien-nc
+- Fix command execute method signature @julien-nc
+- Take new screenshots @julien-nc
 
 ## 4.0.2 – 2026-06-17
 

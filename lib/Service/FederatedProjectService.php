@@ -194,7 +194,7 @@ class FederatedProjectService implements IProjectService {
 		?float $amount, ?string $repeat, ?string $paymentMode = null, ?int $paymentModeId = null,
 		?int $categoryId = null, ?int $repeatAllActive = null, ?string $repeatUntil = null,
 		?int $timestamp = null, ?string $comment = null, ?int $repeatFreq = null,
-		?int $deleted = null, bool $produceActivity = false,
+		?int $deleted = null, bool $produceActivity = false, ?array $payers = null,
 	): void {
 		$params = [
 			'date' => $date,
@@ -212,6 +212,7 @@ class FederatedProjectService implements IProjectService {
 			'comment' => $comment,
 			'repeatFreq' => $repeatFreq,
 			'deleted' => $deleted,
+			'payers' => $payers,
 		];
 		$this->request($projectId, 'api/v1/public/projects/{token}/{password}/bills/' . $billId, $params, 'PUT');
 	}

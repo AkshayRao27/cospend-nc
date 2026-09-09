@@ -668,7 +668,8 @@
                         "type": "object",
                         "required": [
                             "version",
-                            "federation"
+                            "federation",
+                            "multi_payer"
                         ],
                         "properties": {
                             "version": {
@@ -684,6 +685,9 @@
                                         "type": "boolean"
                                     }
                                 }
+                            },
+                            "multi_payer": {
+                                "type": "boolean"
                             }
                         }
                     }
@@ -7125,6 +7129,11 @@
                                         "format": "int64",
                                         "nullable": true,
                                         "default": null
+                                    },
+                                    "payers": {
+                                        "type": "object",
+                                        "nullable": true,
+                                        "default": null
                                     }
                                 }
                             }
@@ -8471,6 +8480,11 @@
                                     "deleted": {
                                         "type": "integer",
                                         "format": "int64",
+                                        "nullable": true,
+                                        "default": null
+                                    },
+                                    "payers": {
+                                        "type": "object",
                                         "nullable": true,
                                         "default": null
                                     }

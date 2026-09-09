@@ -152,11 +152,66 @@
 						class="member-select select"
 						:project-id="projectId"
 						:value="selectedMember"
-						:disabled="!editionAccess || (!isNewBill && !members[myBill.payer_id].activated)"
+						:disabled="!editionAccess || (!isNewBill && !members[myBill.payer_id]?.activated)"
 						:input-label="t('cospend', 'Who paid?')"
 						:placeholder="t('cospend', 'Choose a member')"
-						:members="activatedOrPayer"
+						:members="payerOptions"
 						@input="memberSelected" />
+					<NcButton v-if="isMultiPayer && !payersExpanded"
+						class="payers-toggle"
+						variant="tertiary"
+						:aria-label="t('cospend', 'Edit who paid')"
+						@click="payersExpanded = true">
+						{{ t('cospend', 'Edit') }}
+					</NcButton>
+				</div>
+				<div v-if="payersExpanded" class="bill-payers-panel">
+					<div v-for="payerMember in activatedOrPayer"
+						:key="payerMember.id"
+						class="owerEntry">
+						<NcCheckboxRadioSwitch
+							:model-value="isPayerChecked(payerMember.id)"
+							:disabled="!editionAccess"
+							class="nc-checkbox"
+							@update:model-value="onPayerChecked($event, payerMember.id)">
+							<div class="nc-checkbox-content">
+								<MemberAvatar
+									:member="members[payerMember.id]"
+									:size="24"
+									:hide-status="true" />
+								<span>{{ payerMember.name }}</span>
+							</div>
+						</NcCheckboxRadioSwitch>
+						<input v-if="isPayerChecked(payerMember.id)"
+							v-model="payerAmounts[payerMember.id]"
+							class="amountinput"
+							type="text"
+							:disabled="!editionAccess"
+							:aria-label="t('cospend', 'Amount paid by {member}', { member: payerMember.name })"
+							:aria-describedby="showPayersError ? payersErrorId : undefined"
+							:placeholder="t('cospend', 'Amount')"
+							@input="onPayerAmountInput(payerMember.id)"
+							@blur="onPayersBlur">
+						<NcButton v-if="isPayerChecked(payerMember.id) && payerEntries.length > 2 && !payersBalanced"
+							variant="tertiary"
+							class="assign-rest"
+							@click="assignRemainderTo(payerMember.id)">
+							{{ t('cospend', 'Assign the rest') }}
+						</NcButton>
+					</div>
+					<p class="payers-remainder" aria-live="polite">
+						{{ payersRemainderMessage }}
+					</p>
+					<p v-if="showPayersError"
+						:id="payersErrorId"
+						class="payers-error">
+						{{ payersErrorMessage }}
+					</p>
+					<NcButton class="payers-done"
+						variant="tertiary"
+						@click="payersExpanded = false">
+						{{ t('cospend', 'Done') }}
+					</NcButton>
 				</div>
 				<div class="bill-field bill-date">
 					<CalendarIcon
@@ -587,6 +642,7 @@ import { getLocale } from '@nextcloud/l10n'
 import {
 	showSuccess,
 	showError,
+	showWarning,
 	getFilePickerBuilder,
 	FilePickerType,
 } from '@nextcloud/dialogs'
@@ -676,6 +732,15 @@ export default {
 				...this.bill,
 				owerIds: [...this.bill.owerIds],
 			},
+			// Editing state for the payers panel: member id -> raw input string. A member is a
+			// payer exactly when they have a key here, so unchecking is deleting the key.
+			payerAmounts: Object.fromEntries((this.bill.payers ?? []).map(p => [p.id, String(p.amount)])),
+			// The panel is closed when the bill is coherent and open when it needs attention,
+			// so a split the balances are ignoring is never left for the user to stumble on.
+			payersExpanded: !!this.bill.payersFallback,
+			// The remainder is neutral status while typing; it only reads as an error once the
+			// user has left a field or tried to save.
+			payersBlurred: false,
 			owerCustomShareAmount: {},
 			ignoreWeights: false,
 			showDatePicker: true,
@@ -697,7 +762,83 @@ export default {
 			return this.project.myaccesslevel >= constants.ACCESS.MAINTENER
 		},
 		selectedMember() {
+			// The sentinel's name is what the closed field shows, and MemberMultiSelect prints
+			// a null-id member's name verbatim, so the chips need no change to that component.
+			if (this.isMultiPayer) {
+				return { id: null, name: this.payerChipsLabel }
+			}
 			return this.members[this.myBill.payer_id]
+		},
+		payerOptions() {
+			// The fan-out modes turn one form into several single-payer bills, so a split has
+			// no meaning there. Not offering the option is cheaper than explaining it.
+			if (this.isNewBill && this.newBillMode !== 'normal') {
+				return this.activatedOrPayer
+			}
+			return [
+				...this.activatedOrPayer,
+				// The ellipsis says this opens a configuration rather than applying a value.
+				// The id must be null exactly: any other placeholder falls through to the
+				// member lookup and throws.
+				{ id: null, name: t('cospend', 'Multiple people…') },
+			]
+		},
+		isMultiPayer() {
+			return Object.keys(this.payerAmounts).length > 0
+		},
+		payerEntries() {
+			// Display order, which the API deliberately does not promise: largest first, ties
+			// by name. Derived from the data, so it matches what the server stored.
+			return Object.keys(this.payerAmounts)
+				.map(mid => ({ id: parseInt(mid), amount: this.parsePayerAmount(this.payerAmounts[mid]) }))
+				.sort((a, b) => (b.amount - a.amount) || strcmp(
+					this.members[a.id]?.name ?? '', this.members[b.id]?.name ?? '',
+				))
+		},
+		payersTotal() {
+			return this.payerEntries.reduce((sum, entry) => sum + entry.amount, 0)
+		},
+		payersRemainder() {
+			return (parseFloat(this.myBill.amount) || 0) - this.payersTotal
+		},
+		payersBalanced() {
+			return Math.abs(this.payersRemainder) < 0.005
+		},
+		payerChipsLabel() {
+			// The field still has to read as an answer to "who paid?", so it shows the actual
+			// split rather than a placeholder like "Multiple".
+			const currency = this.project.currencyname ? ' ' + this.project.currencyname : ''
+			return this.payerEntries
+				.map(entry => (this.members[entry.id]?.name ?? '?') + ' ' + entry.amount.toFixed(2) + currency)
+				.join(' · ')
+		},
+		payersErrorId() {
+			return 'payers-error-' + this.myBill.id
+		},
+		showPayersError() {
+			return this.isMultiPayer && !this.payersBalanced && this.payersBlurred
+		},
+		payersErrorMessage() {
+			const currency = this.project.currencyname ? ' ' + this.project.currencyname : ''
+			const covered = this.payersTotal.toFixed(2) + currency
+			const total = (parseFloat(this.myBill.amount) || 0).toFixed(2) + currency
+			if (this.myBill.payersFallback) {
+				// The consequence is already live in everyone's balances, so the message says
+				// what it is instead of only reporting the mismatch.
+				return t('cospend', 'Payers cover {covered} of {total}. Until it balances, the bill counts as paid entirely by {payer}.', {
+					covered, total, payer: this.members[this.myBill.payer_id]?.name ?? '?',
+				})
+			}
+			return t('cospend', 'Payers cover {covered}, total is {total}', { covered, total })
+		},
+		payersRemainderMessage() {
+			const currency = this.project.currencyname ? ' ' + this.project.currencyname : ''
+			if (this.payersBalanced) {
+				return t('cospend', 'Everything is assigned')
+			}
+			return this.payersRemainder > 0
+				? t('cospend', '{amount} left to assign', { amount: this.payersRemainder.toFixed(2) + currency })
+				: t('cospend', '{amount} too much assigned', { amount: (-this.payersRemainder).toFixed(2) + currency })
 		},
 		selectedPaymentModeItem() {
 			if (this.myBill.paymentmodeid === 0) {
@@ -871,7 +1012,7 @@ export default {
 				: this.payer
 		},
 		payerDisabled() {
-			return this.myBill.id !== 0 && !this.members[this.myBill.payer_id].activated
+			return this.myBill.id !== 0 && !this.members[this.myBill.payer_id]?.activated
 		},
 		payerUserId() {
 			return this.myBill.id !== 0 && this.members[this.myBill.payer_id]
@@ -967,7 +1108,13 @@ export default {
 			}).map(mid => this.members[mid])
 		},
 		activatedOrPayer() {
-			return this.sortedMembers.filter(m => (this.members[m.id].activated || parseInt(m.id) === this.myBill.payer_id))
+			// A deactivated member who still contributed to this bill has to stay visible,
+			// otherwise editing it would silently drop them.
+			return this.sortedMembers.filter(m => (
+				this.members[m.id].activated
+				|| parseInt(m.id) === this.myBill.payer_id
+				|| Object.hasOwn(this.payerAmounts, m.id)
+			))
 		},
 		activatedOrOwer() {
 			return this.sortedMembers.filter(m => (this.members[m.id].activated || this.myBill.owerIds.includes(m.id)))
@@ -1035,6 +1182,20 @@ export default {
 	},
 
 	watch: {
+		newBillMode(mode) {
+			if (mode === 'normal' || !this.isMultiPayer) {
+				return
+			}
+			// Dropping a configured split without saying so would look like the form losing
+			// data. A toast is proportionate; this is not a decision worth a dialog.
+			const dropped = this.payerEntries
+				.map(entry => this.members[entry.id]?.name ?? '?')
+				.join(', ')
+			this.payerAmounts = {}
+			this.payersExpanded = false
+			this.myBill.payers = []
+			showWarning(t('cospend', 'This bill type has a single payer, so the split between {payers} was dropped.', { payers: dropped }))
+		},
 		myBill() {
 			// reset formula when changing bill
 			this.currentFormula = null
@@ -1045,6 +1206,9 @@ export default {
 				...this.bill,
 				owerIds: [...this.bill.owerIds],
 			}
+			this.payerAmounts = Object.fromEntries((this.bill.payers ?? []).map(p => [p.id, String(p.amount)]))
+			this.payersExpanded = !!this.bill.payersFallback
+			this.payersBlurred = false
 			this.$refs.what.focus()
 		},
 		useTime() {
@@ -1063,10 +1227,97 @@ export default {
 			return moment(date).isBefore(this.billDateMoment)
 		},
 		memberSelected(selected) {
-			if (selected) {
-				this.myBill.payer_id = selected.id
-				this.onBillEdited(null, false)
+			if (!selected) {
+				return
 			}
+			if (selected.id === null) {
+				// The sentinel opens the panel instead of applying a value. Seed it with the
+				// current payer and no amount: with two payers checked, filling one auto-fills
+				// the other, so the user types a single number.
+				if (!this.isMultiPayer) {
+					this.payerAmounts = { [this.myBill.payer_id]: '' }
+				}
+				this.payersExpanded = true
+				this.payersBlurred = false
+				return
+			}
+			this.payerAmounts = {}
+			this.payersExpanded = false
+			this.myBill.payer_id = selected.id
+			this.onBillEdited(null, false)
+		},
+		billErrorMessage(error) {
+			const ocs = error.response?.data?.ocs
+			// Field-keyed failures arrive as {data: {payers: '...'}} rather than in meta.message,
+			// so without this the raw JSON body ends up in the toast.
+			const fieldError = Object.values(ocs?.data ?? {}).find(value => typeof value === 'string' && value !== '')
+			return ocs?.meta?.message || ocs?.data?.message || fieldError || error.response?.request?.responseText
+		},
+		parsePayerAmount(value) {
+			const raw = String(value ?? '').replace(/,/g, '.')
+			const parsed = parseFloat(raw)
+			return isNaN(parsed) ? 0 : parsed
+		},
+		isPayerChecked(memberId) {
+			return Object.hasOwn(this.payerAmounts, memberId)
+		},
+		onPayerChecked(checked, memberId) {
+			if (checked) {
+				this.payerAmounts[memberId] = ''
+			} else {
+				// Their amount goes with them and the remainder grows. Redistributing would
+				// rewrite a number the user never touched.
+				delete this.payerAmounts[memberId]
+			}
+			this.autofillSecondPayer(memberId)
+			this.onPayersEdited()
+		},
+		onPayerAmountInput(memberId) {
+			this.autofillSecondPayer(memberId)
+			this.onPayersEdited()
+		},
+		autofillSecondPayer(justEditedId) {
+			// With exactly two payers, one amount determines the other.
+			const ids = Object.keys(this.payerAmounts).map(mid => parseInt(mid))
+			if (ids.length !== 2) {
+				return
+			}
+			const total = parseFloat(this.myBill.amount)
+			if (isNaN(total)) {
+				return
+			}
+			const other = ids.find(id => id !== parseInt(justEditedId))
+			if (other === undefined) {
+				return
+			}
+			const edited = this.parsePayerAmount(this.payerAmounts[justEditedId])
+			if (edited <= 0) {
+				return
+			}
+			const remaining = total - edited
+			if (remaining < 0) {
+				// Completing the pair would mean the other member paid a negative amount.
+				// Leave their field alone and let the counter say what is wrong instead.
+				return
+			}
+			this.payerAmounts[other] = remaining.toFixed(2)
+		},
+		assignRemainderTo(memberId) {
+			const current = this.parsePayerAmount(this.payerAmounts[memberId])
+			this.payerAmounts[memberId] = (current + this.payersRemainder).toFixed(2)
+			this.onPayersEdited()
+		},
+		onPayersEdited() {
+			// If the total is still empty the sum seeds it once; from then on the total wins,
+			// because it is the number printed on the receipt.
+			if (this.myBill.amount === '' || this.myBill.amount === 0) {
+				this.myBill.amount = this.payersTotal
+			}
+			this.myBill.payers = this.payerEntries.filter(entry => entry.amount !== 0)
+			this.onBillEdited(null, false)
+		},
+		onPayersBlur() {
+			this.payersBlurred = true
 		},
 		onRepeatChanged(e) {
 			this.myBill.repeat = e.target.value
@@ -1103,7 +1354,7 @@ export default {
 				}).catch((error) => {
 					showError(
 						t('cospend', 'Failed to add payment mode')
-						+ ': ' + (error.response?.data?.ocs?.meta?.message || error.response?.data?.ocs?.data?.message || error.response?.request?.responseText),
+						+ ': ' + this.billErrorMessage(error),
 					)
 					console.error(error)
 				})
@@ -1139,7 +1390,7 @@ export default {
 				}).catch((error) => {
 					showError(
 						t('cospend', 'Failed to add category')
-						+ ': ' + (error.response?.data?.ocs?.meta?.message || error.response?.data?.ocs?.data?.message || error.response?.request?.responseText),
+						+ ': ' + this.billErrorMessage(error),
 					)
 					console.error(error)
 				})
@@ -1220,7 +1471,15 @@ export default {
 		},
 		basicBillValueCheck() {
 			const myBill = this.myBill
-			if (myBill.amount === '' || isNaN(myBill.amount) || isNaN(myBill.payer_id)) {
+			if (myBill.amount === '' || isNaN(myBill.amount)) {
+				return false
+			}
+			if (this.isMultiPayer) {
+				// The payers describe who paid; payer_id is derived from them server-side.
+				return this.payersBalanced
+			}
+			// isNaN(null) is false, so a missing payer would otherwise pass this check.
+			if (myBill.payer_id === null || myBill.payer_id === undefined || isNaN(myBill.payer_id)) {
 				return false
 			}
 			return true
@@ -1231,6 +1490,11 @@ export default {
 		saveBill() {
 			// don't save the bill if we are typing a formula
 			if (this.currentFormula !== null) {
+				return
+			}
+			// The debounced autosave fires two seconds after a keystroke, which lands in the
+			// middle of typing a split. Wait for it to add up rather than rejecting it.
+			if (this.isMultiPayer && !this.payersBalanced) {
 				return
 			}
 			if (!this.isBillValidForSaveOrNormal()) {
@@ -1245,7 +1509,7 @@ export default {
 					console.debug(error)
 					showError(
 						t('cospend', 'Failed to save bill')
-						+ ': ' + (error.response?.data?.ocs?.meta?.message || error.response?.data?.ocs?.data?.message || error.response?.request?.responseText),
+						+ ': ' + this.billErrorMessage(error),
 					)
 				}).then(() => {
 					this.billLoading = false
@@ -1288,6 +1552,15 @@ export default {
 					} else if (this.newBillMode === 'customShare') {
 						this.owerCustomShareAmount = this.getOwersCustomShareAmount()
 					}
+				}
+				// The payer amounts are in the same currency as the total, so they convert with
+				// it. Leaving them behind would silently break the sum they have to add up to.
+				if (this.isMultiPayer) {
+					for (const memberId of Object.keys(this.payerAmounts)) {
+						const converted = this.parsePayerAmount(this.payerAmounts[memberId]) * currency.exchange_rate
+						this.payerAmounts[memberId] = converted.toFixed(2)
+					}
+					this.myBill.payers = this.payerEntries.filter(entry => entry.amount !== 0)
 				}
 				this.onBillEdited(null, false)
 			}
@@ -1508,6 +1781,7 @@ export default {
 				timestamp,
 				payer_id: payerId,
 				owerIds,
+				payers: this.myBill.payers ?? [],
 				amount,
 				repeat,
 				repeatallactive,
@@ -1522,6 +1796,7 @@ export default {
 				timestamp,
 				payer: payerId,
 				payedFor: owerIds.join(','),
+				payers: this.isMultiPayer ? this.myBill.payers : null,
 				amount,
 				repeat,
 				repeatAllActive: repeatallactive ? 1 : 0,
@@ -1536,7 +1811,7 @@ export default {
 			}).catch((error) => {
 				showError(
 					t('cospend', 'Failed to create bill')
-					+ ': ' + (error.response?.data?.ocs?.meta?.message || error.response?.data?.ocs?.data?.message || error.response?.request?.responseText),
+					+ ': ' + this.billErrorMessage(error),
 				)
 			}).then(() => {
 				this.createBillDone()
@@ -1687,7 +1962,7 @@ export default {
 			}).catch((error) => {
 				showError(
 					t('cospend', 'Failed to generate share link to file')
-					+ ': ' + (error.response?.data?.ocs?.meta?.message || error.response?.data?.ocs?.data?.message || error.response?.request?.responseText),
+					+ ': ' + this.billErrorMessage(error),
 				)
 			})
 		},
@@ -1698,6 +1973,7 @@ export default {
 			const billWithoutDisabledOwers = {
 				...this.myBill,
 				owerIds,
+				payers: (this.myBill.payers ?? []).map(payer => ({ ...payer })),
 			}
 			this.$emit('duplicate-bill', billWithoutDisabledOwers)
 		},
@@ -1904,6 +2180,24 @@ button {
 
 .checkbox-line {
 	line-height: 44px;
+}
+
+.bill-payers-panel {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding-inline-start: 28px;
+
+	.payers-remainder {
+		opacity: 0.7;
+		padding-inline-start: 4px;
+	}
+
+	.payers-error {
+		// the contrast-adjusted variant; plain --color-error is unreadable on a dark ground
+		color: var(--color-error-text);
+		padding-inline-start: 4px;
+	}
 }
 
 #billTypeLine {

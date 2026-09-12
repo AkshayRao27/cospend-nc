@@ -25,6 +25,7 @@ So the only differences between IHateMoney API and Cospend API are :
 
 * The password has to be included in the URL path, just after the project ID, like that : `https://mynextcloud.org/index.php/apps/cospend/api/myproject/projectPassword/bills`
 * The parameter `payed_for` cannot be given multiple times like in IHateMoney. It has to be given once with coma separated values.
+* A Cospend bill can have several payers, which IHateMoney has no equivalent for. Bill creation and edition accept an optional `payers` parameter: a list of `{"id": <memberId>, "amount": <float>}` objects whose amounts add up to the bill amount. It is optional everywhere, `payer` keeps working on its own, and a bill with a single payer never carries it.
 
 That's it.
 

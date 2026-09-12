@@ -2746,23 +2746,46 @@ class LocalProjectService implements IProjectService {
 		$originMembers = $this->getMembers($projectId, 'lowername');
 		$destinationMembers = $this->getMembers($toProjectId, 'lowername');
 
-		// try to match them
-		$originalPayer = $originMembers;
-		$originalPayer = array_filter($originalPayer, static function ($val) use ($bill) {
-			return $val['id'] === $bill['payer_id'];
-		});
-		$originalPayer = array_shift($originalPayer);
+		// Every payer has to exist in the target project. Matching only some of them would
+		// force a choice between inventing a member for the rest and dropping what they put
+		// in, and neither is a fact this app is entitled to decide, so the move is refused
+		// whole rather than performed partially.
+		$originById = array_column($originMembers, null, 'id');
+		$destinationByName = array_column($destinationMembers, null, 'name');
 
-		$newPayer = $destinationMembers;
-		$newPayer = array_filter($newPayer, static function ($val) use ($originalPayer) {
-			return $val['name'] === $originalPayer['name'];
-		});
+		$payerIds = $bill['payers'] === []
+			? [$bill['payer_id']]
+			: array_column($bill['payers'], 'id');
 
-		if (count($newPayer) < 1) {
-			return ['message' => $this->l10n->t('Cannot match payer')];
+		$missingPayerNames = [];
+		$newPayerIdByOldId = [];
+		foreach ($payerIds as $payerId) {
+			$name = $originById[$payerId]['name'] ?? null;
+			if ($name === null || !isset($destinationByName[$name])) {
+				$missingPayerNames[] = $name ?? (string)$payerId;
+				continue;
+			}
+			$newPayerIdByOldId[$payerId] = $destinationByName[$name]['id'];
 		}
 
-		$newPayer = array_shift($newPayer);
+		if ($missingPayerNames !== []) {
+			// Naming all of them at once spares a second attempt after creating the first.
+			return ['message' => $this->l10n->t(
+				'Cannot match these payers in the target project: %1$s',
+				[implode(', ', $missingPayerNames)],
+			)];
+		}
+
+		$newPayers = $bill['payers'] === []
+			? null
+			: array_map(
+				static fn (array $payer): array => [
+					'id' => $newPayerIdByOldId[$payer['id']],
+					'amount' => $payer['amount'],
+				],
+				$bill['payers'],
+			);
+		$newPayerId = $newPayerIdByOldId[$bill['payer_id']];
 
 		// match owers too, these do not mind that much, the user will be able to modify the new invoice just after moving it
 		$newOwers = array_filter($destinationMembers, static function ($member) use ($bill) {
@@ -2782,11 +2805,12 @@ class LocalProjectService implements IProjectService {
 
 		try {
 			$insertedId = $this->createBill(
-				$toProjectId, null, $bill['what'], $newPayer['id'],
+				$toProjectId, null, $bill['what'], $newPayerId,
 				implode(',', array_column($newOwers, 'id')), $bill['amount'], $bill['repeat'],
 				$bill['paymentmode'], $newPaymentId,
 				$newCategoryId, $bill['repeatallactive'], $bill['repeatuntil'],
-				$bill['timestamp'], $bill['comment'], $bill['repeatfreq'], $bill['deleted']
+				$bill['timestamp'], $bill['comment'], $bill['repeatfreq'], $bill['deleted'],
+				false, $newPayers
 			);
 		} catch (\Throwable $e) {
 			return ['message' => $this->l10n->t('Cannot create new bill: %1$s', $e->getMessage())];
@@ -2848,13 +2872,28 @@ class LocalProjectService implements IProjectService {
 			}
 		}
 
+		// Nothing copies relations generically, so the payers have to be carried over by hand:
+		// without this every occurrence would silently come back with a single payer, which is
+		// data corruption on a recurring schedule. Reading them through the same helper the
+		// balances use means a bill whose payers no longer add up repeats the way its balance
+		// is already being computed, rather than failing validation on the copy.
+		$contributions = $this->effectivePayerContributions($bill);
+		$repeatedPayers = count($contributions) > 1
+			? array_map(
+				static fn (int $memberId, float $amount): array => ['id' => $memberId, 'amount' => $amount],
+				array_keys($contributions),
+				array_values($contributions),
+			)
+			: null;
+
 		try {
 			$newBillId = $this->createBill(
 				$projectId, null, $bill['what'], $bill['payer_id'],
 				$owerIdsStr, $bill['amount'], $bill['repeat'],
 				$bill['paymentmode'], $bill['paymentmodeid'],
 				$bill['categoryid'], $bill['repeatallactive'], $bill['repeatuntil'],
-				$targetDatetime->getTimestamp(), $bill['comment'], $bill['repeatfreq']
+				$targetDatetime->getTimestamp(), $bill['comment'], $bill['repeatfreq'],
+				0, false, $repeatedPayers
 			);
 		} catch (\Throwable $e) {
 			$newBillId = 0;

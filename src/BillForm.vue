@@ -637,6 +637,7 @@ import MemberMultiSelect from './components/MemberMultiSelect.vue'
 
 import { emit } from '@nextcloud/event-bus'
 import { generateUrl } from '@nextcloud/router'
+import { getCapabilities } from '@nextcloud/capabilities'
 import { getCurrentUser } from '@nextcloud/auth'
 import { getLocale } from '@nextcloud/l10n'
 import {
@@ -807,7 +808,16 @@ export default {
 			return (parseFloat(this.myBill.amount) || 0) - this.payersTotal
 		},
 		payersBalanced() {
-			return Math.abs(this.payersRemainder) < 0.005
+			// The server's own tolerance, published in the capabilities, so the live counter
+			// and the stored verdict cannot disagree at the edges.
+			const epsilon = getCapabilities()?.cospend?.amount_epsilon ?? 0.005
+			return Math.abs(this.payersRemainder) < epsilon
+		},
+		isInFallback() {
+			// Derived, never stored: the bill carries the server's verdict on the state it last
+			// saw, which goes stale the moment this form changes an amount or a contribution.
+			// The form always holds both numbers, so it can answer the same question itself.
+			return this.isMultiPayer && !this.payersBalanced
 		},
 		payerChipsLabel() {
 			// The field still has to read as an answer to "who paid?", so it shows the actual
@@ -824,7 +834,7 @@ export default {
 			// A split that is already being ignored by the balances is not a draft: its
 			// consequence is live for everyone, so the panel says why it opened rather than
 			// waiting for the user to leave a field they have not entered yet.
-			if (this.myBill.payersFallback && !this.payersDirty) {
+			if (this.isInFallback && !this.payersDirty) {
 				return true
 			}
 			return this.isMultiPayer && !this.payersBalanced && this.payersBlurred
@@ -833,7 +843,7 @@ export default {
 			const currency = this.project.currencyname ? ' ' + this.project.currencyname : ''
 			const covered = this.payersTotal.toFixed(2) + currency
 			const total = (parseFloat(this.myBill.amount) || 0).toFixed(2) + currency
-			if (this.myBill.payersFallback && !this.payersDirty) {
+			if (this.isInFallback && !this.payersDirty) {
 				// The consequence is already live in everyone's balances, so the message says
 				// what it is instead of only reporting the mismatch.
 				return t('cospend', 'Payers cover {covered} of {total}. Until it balances, the bill counts as paid entirely by {payer}.', {
@@ -1518,6 +1528,9 @@ export default {
 				this.billLoading = true
 				// null means "leave the payers alone", which is what an untouched split needs:
 				// sending rows back that no longer add up would be refused by validation.
+				// The saved state is what this form is holding, so the flag the list reads is
+				// recomputed here rather than left at whatever the server last told us.
+				this.myBill.payersFallback = this.isInFallback
 				network.editBill(this.projectId, {
 					...this.myBill,
 					payers: this.payersDirty ? this.myBill.payers : null,
@@ -2208,15 +2221,22 @@ button {
 	gap: 2px;
 	padding-inline-start: 28px;
 
+	// The form's two columns wrap on their intrinsic width, so an unconstrained line of text
+	// here silently pushes "For whom?" below instead of beside. Capping these makes the
+	// sentences wrap inside the panel rather than widen the column that holds it.
+	.payers-remainder,
+	.payers-error {
+		max-width: 40ch;
+		padding-inline-start: 4px;
+	}
+
 	.payers-remainder {
 		opacity: 0.7;
-		padding-inline-start: 4px;
 	}
 
 	.payers-error {
 		// the contrast-adjusted variant; plain --color-error is unreadable on a dark ground
 		color: var(--color-error-text);
-		padding-inline-start: 4px;
 	}
 }
 

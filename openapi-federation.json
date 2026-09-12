@@ -420,7 +420,8 @@
                         "required": [
                             "version",
                             "federation",
-                            "multi_payer"
+                            "multi_payer",
+                            "amount_epsilon"
                         ],
                         "properties": {
                             "version": {
@@ -439,6 +440,10 @@
                             },
                             "multi_payer": {
                                 "type": "boolean"
+                            },
+                            "amount_epsilon": {
+                                "type": "number",
+                                "format": "double"
                             }
                         }
                     }

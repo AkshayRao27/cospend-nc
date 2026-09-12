@@ -741,6 +741,11 @@ export default {
 			// The remainder is neutral status while typing; it only reads as an error once the
 			// user has left a field or tried to save.
 			payersBlurred: false,
+			// Whether this session actually touched the payers. A bill can arrive with a split
+			// that no longer adds up, and the rest of the form has to stay editable: sending
+			// the untouched rows back would fail validation, and refusing to save would make
+			// every other field silently read-only.
+			payersDirty: false,
 			owerCustomShareAmount: {},
 			ignoreWeights: false,
 			showDatePicker: true,
@@ -816,13 +821,19 @@ export default {
 			return 'payers-error-' + this.myBill.id
 		},
 		showPayersError() {
+			// A split that is already being ignored by the balances is not a draft: its
+			// consequence is live for everyone, so the panel says why it opened rather than
+			// waiting for the user to leave a field they have not entered yet.
+			if (this.myBill.payersFallback && !this.payersDirty) {
+				return true
+			}
 			return this.isMultiPayer && !this.payersBalanced && this.payersBlurred
 		},
 		payersErrorMessage() {
 			const currency = this.project.currencyname ? ' ' + this.project.currencyname : ''
 			const covered = this.payersTotal.toFixed(2) + currency
 			const total = (parseFloat(this.myBill.amount) || 0).toFixed(2) + currency
-			if (this.myBill.payersFallback) {
+			if (this.myBill.payersFallback && !this.payersDirty) {
 				// The consequence is already live in everyone's balances, so the message says
 				// what it is instead of only reporting the mismatch.
 				return t('cospend', 'Payers cover {covered} of {total}. Until it balances, the bill counts as paid entirely by {payer}.', {
@@ -1209,6 +1220,7 @@ export default {
 			this.payerAmounts = Object.fromEntries((this.bill.payers ?? []).map(p => [p.id, String(p.amount)]))
 			this.payersExpanded = !!this.bill.payersFallback
 			this.payersBlurred = false
+			this.payersDirty = false
 			this.$refs.what.focus()
 		},
 		useTime() {
@@ -1308,6 +1320,7 @@ export default {
 			this.onPayersEdited()
 		},
 		onPayersEdited() {
+			this.payersDirty = true
 			// If the total is still empty the sum seeds it once; from then on the total wins,
 			// because it is the number printed on the receipt.
 			if (this.myBill.amount === '' || this.myBill.amount === 0) {
@@ -1474,7 +1487,7 @@ export default {
 			if (myBill.amount === '' || isNaN(myBill.amount)) {
 				return false
 			}
-			if (this.isMultiPayer) {
+			if (this.payersDirty) {
 				// The payers describe who paid; payer_id is derived from them server-side.
 				return this.payersBalanced
 			}
@@ -1493,15 +1506,22 @@ export default {
 				return
 			}
 			// The debounced autosave fires two seconds after a keystroke, which lands in the
-			// middle of typing a split. Wait for it to add up rather than rejecting it.
-			if (this.isMultiPayer && !this.payersBalanced) {
+			// middle of typing a split. Wait for it to add up rather than rejecting it. Only
+			// while the user is actually composing one: a bill that arrived unbalanced must
+			// stay editable in every other field.
+			if (this.payersDirty && !this.payersBalanced) {
 				return
 			}
 			if (!this.isBillValidForSaveOrNormal()) {
 				showError(t('cospend', 'Impossible to save bill, invalid values'))
 			} else {
 				this.billLoading = true
-				network.editBill(this.projectId, this.myBill).then((response) => {
+				// null means "leave the payers alone", which is what an untouched split needs:
+				// sending rows back that no longer add up would be refused by validation.
+				network.editBill(this.projectId, {
+					...this.myBill,
+					payers: this.payersDirty ? this.myBill.payers : null,
+				}).then((response) => {
 					// to update balances
 					this.$emit('bill-saved', this.bill, this.myBill)
 					showSuccess(t('cospend', 'Bill saved'))

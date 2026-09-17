@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 4.1.4 – 2026-09-17 (fork release)
+
+### Added
+
+- Per-category default payment mode: each category can define a payment mode that new bills in that
+  category inherit when none is given. Set it in the Categories tab of the project sidebar; the list
+  shows each category's default at a glance. An explicit choice always wins and an existing payment
+  mode is never overwritten. Resolution happens server-side, so the API, MoneyBuster, CSV import and
+  scheduled repeat bills get it too, and it chains with auto-categorisation: a bill categorised from
+  its title also picks up that category's payment mode.
+
+### Fixed
+
+- The legacy `payment_mode` column is now derived from the right project. `LocalProjectService`
+  cached a project's payment modes without keying them by project, so a request touching two projects
+  wrote a correct `payment_mode_id` alongside a wrong `payment_mode`, hiding those bills from classic
+  mode filtering and CSV export
+
 ## 4.1.3 – 2026-09-02 (fork release)
 
 ### Changed

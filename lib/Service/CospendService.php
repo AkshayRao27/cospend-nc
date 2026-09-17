@@ -1075,8 +1075,7 @@ class CospendService {
 
 			$userFolder = $this->root->getUserFolder($uid);
 			foreach ($projects as $project) {
-				/** @var string $dbProjectId */
-				$dbProjectId = $project->getId();
+				$dbProjectId = (string)$project->getId();
 				$autoExport = $project->getAutoExport();
 
 				$suffix = $dailySuffix;

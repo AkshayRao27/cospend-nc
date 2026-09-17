@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   scheduled repeat bills get it too, and it chains with auto-categorisation: a bill categorised from
   its title also picks up that category's payment mode.
 
+### Changed
+
+- Synced with upstream 4.1.3 (numerical project ID handling, PHPUnit notice display and mock
+  expectation attributes) @julien-nc
+  [#414](https://github.com/julien-nc/cospend-nc/issues/414)
+
 ### Fixed
 
 - The legacy `payment_mode` column is now derived from the right project. `LocalProjectService`

@@ -1822,6 +1822,7 @@ class LocalProjectService implements IProjectService {
 		// get the projects
 		$projects = [];
 		foreach ($projectIds as $projectId) {
+			$projectId = (string)$projectId;
 			$project = $this->getProjectInfo($projectId);
 			$project['myaccesslevel'] = $this->getUserMaxAccessLevel($userId, $projectId);
 			$projects[] = $project;
@@ -2444,7 +2445,7 @@ class LocalProjectService implements IProjectService {
 						continue;
 					}
 					if (!array_key_exists($jsonBill['projectid'], $projects)) {
-						$projects[$jsonBill['projectid']] = $this->getProjectInfo($jsonBill['projectid']);
+						$projects[$jsonBill['projectid']] = $this->getProjectInfo((string)$jsonBill['projectid']);
 					}
 					$result[] = [
 						'new_bill_id' => $newBillId,

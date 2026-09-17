@@ -22,8 +22,10 @@ use OCP\IGroupManager;
 use OCP\IL10N;
 use OCP\IUserManager;
 use OCP\Share\IManager;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\TestCase;
 
+#[AllowMockObjectsWithoutExpectations]
 class LocalProjectServiceTest extends TestCase {
 
 	private LocalProjectService $localProjectService;
@@ -141,6 +143,7 @@ class LocalProjectServiceTest extends TestCase {
 			'tdpm4',
 			'tdpm5',
 			'tdpm6',
+			'123456',
 		];
 		foreach ($projIds as $projId) {
 			try {
@@ -1538,6 +1541,20 @@ class LocalProjectServiceTest extends TestCase {
 		$this->assertEquals(Http::STATUS_OK, $status);
 		$data = $resp->getData();
 		$this->assertEquals('DELETED', $data['message'] ?? '');
+	}
+
+	public function testGetLocalProjectsWithNumericalProjectId(): void {
+		$result = $this->localProjectService->createProject('Numeric project', '123456', null, 'test');
+		$this->assertEquals('123456', $result['id']);
+
+		$projectNames = $this->localProjectService->getProjectNames('test');
+		$projectIds = array_keys($projectNames);
+		$this->assertContains(123456, $projectIds);
+
+		$projects = $this->localProjectService->getLocalProjects('test');
+		$this->assertCount(1, $projects);
+		$this->assertEquals('123456', $projects[0]['id']);
+		$this->assertEquals('Numeric project', $projects[0]['name']);
 	}
 
 	public function testSearchBills() {

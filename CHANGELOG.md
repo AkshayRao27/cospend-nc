@@ -2,49 +2,27 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
-Upstream releases follow [Semantic Versioning](http://semver.org/); fork releases use calendar
-versioning, `YYYY.M.N`, so that a fork build can never be confused with, or overwritten by, an
-upstream release of the same number.
+Upstream releases follow [Semantic Versioning](http://semver.org/); fork releases use calendar versioning, `YYYY.M.N`, so that a fork build can never be confused with, or overwritten by, an upstream release of the same number.
 
 ## 2026.9.0 – 2026-09-17 (fork release)
 
-First release under calendar versioning. Fork builds now use `YYYY.M.N` (year, month, release within
-that month) instead of tracking upstream's numbers, which had already produced two different 4.1.3s:
-upstream released its own 4.1.3 on the same day this fork claimed that number. A fork number can no
-longer collide with an upstream one, and Nextcloud can no longer offer to replace this build with the
-app store's. The upstream version this is built on is recorded under **Changed** below, not in the
-version string.
+First release under calendar versioning. Fork builds now use `YYYY.M.N` (year, month, release within that month) instead of tracking upstream's numbers, which had already produced two different 4.1.3s: upstream released its own 4.1.3 on the same day this fork claimed that number. A fork number can no longer collide with an upstream one, and Nextcloud can no longer offer to replace this build with the app store's. The upstream version this is built on is recorded under **Changed** below, not in the version string.
 
-This supersedes the fork's unreleased 4.1.3 and 4.1.4 entries, which are folded in here — v4.0.4 was
-the last build actually released.
+This supersedes the fork's unreleased 4.1.3 and 4.1.4 entries, which are folded in here — v4.0.4 was the last build actually released.
 
 ### Added
 
-- Per-category default payment mode: each category can define a payment mode that new bills in that
-  category inherit when none is given. Set it in the Categories tab of the project sidebar; the list
-  shows each category's default at a glance. An explicit choice always wins and an existing payment
-  mode is never overwritten. Resolution happens server-side, so the API, MoneyBuster, CSV import and
-  scheduled repeat bills get it too, and it chains with auto-categorisation: a bill categorised from
-  its title also picks up that category's payment mode.
+- Per-category default payment mode: each category can define a payment mode that new bills in that category inherit when none is given. Set it in the Categories tab of the project sidebar; the list shows each category's default at a glance. An explicit choice always wins and an existing payment mode is never overwritten. Resolution happens server-side, so the API, MoneyBuster, CSV import and scheduled repeat bills get it too, and it chains with auto-categorisation: a bill categorised from its title also picks up that category's payment mode.
 
 ### Changed
 
-- Synced with upstream 4.1.3, via 4.1.2: Nextcloud 36 support, access-level check refactor, REUSE
-  migration, eslint flat config, Vue 3 component renames, numerical project ID handling, PHPUnit
-  notice display and mock expectation attributes @julien-nc
-  [#414](https://github.com/julien-nc/cospend-nc/issues/414)
+- Synced with upstream 4.1.3, via 4.1.2: Nextcloud 36 support, access-level check refactor, REUSE migration, eslint flat config, Vue 3 component renames, numerical project ID handling, PHPUnit notice display and mock expectation attributes @julien-nc [#414](https://github.com/julien-nc/cospend-nc/issues/414)
 
 ### Fixed
 
-- The legacy `payment_mode` column is now derived from the right project. `LocalProjectService`
-  cached a project's payment modes without keying them by project, so a request touching two projects
-  wrote a correct `payment_mode_id` alongside a wrong `payment_mode`, hiding those bills from classic
-  mode filtering and CSV export. Reachable upstream through the nightly repeat-bills cron, which
-  walks every project in one pass
-- Auto-categorise `occ` commands now declare the `: int` return type required by the Symfony
-  Console version shipped with 4.1.x
-- Cross-project balance view now cleans up pending requests via `beforeUnmount` (`beforeDestroy`
-  is inert under Vue 3)
+- The legacy `payment_mode` column is now derived from the right project. `LocalProjectService` cached a project's payment modes without keying them by project, so a request touching two projects wrote a correct `payment_mode_id` alongside a wrong `payment_mode`, hiding those bills from classic mode filtering and CSV export. Reachable upstream through the nightly repeat-bills cron, which walks every project in one pass
+- Auto-categorise `occ` commands now declare the `: int` return type required by the Symfony Console version shipped with 4.1.x
+- Cross-project balance view now cleans up pending requests via `beforeUnmount` (`beforeDestroy` is inert under Vue 3)
 
 ## 4.0.4 – 2026-07-11 (fork release)
 

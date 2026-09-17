@@ -62,7 +62,13 @@ To go back to upstream Cospend, install it over this one. The extra columns this
 
 ## Versioning
 
-Fork releases bump **past** the upstream version they're based on, so `4.1.4` here is upstream `4.1.2` plus everything in the table above. That keeps Nextcloud's upgrade path sane and makes it obvious which upstream release a build corresponds to.
+Fork releases use **calendar versioning**: `YYYY.M.N` — year, month, and which release that month. So `2026.9.0` is the first release of September 2026.
+
+Releases used to bump past whatever upstream was on, which stopped working: this fork's `4.1.3` and upstream's real `4.1.3` came out on the same day and mean completely different things. A date can't collide with an upstream number, ever.
+
+**Which upstream release a build is based on is in [CHANGELOG.md](CHANGELOG.md)**, under *Changed*, not in the version number.
+
+One side effect worth knowing about: because these numbers are far above upstream's, Nextcloud will never offer you an app store "update" for Cospend while this fork is installed. That's deliberate. Accepting such an update would replace this fork with upstream's build and take every feature in the table above with it. If you want to go back to upstream, do it on purpose — see above.
 
 ## Branches
 

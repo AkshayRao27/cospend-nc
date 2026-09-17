@@ -7136,9 +7136,27 @@
                                         "default": null
                                     },
                                     "payers": {
-                                        "type": "object",
+                                        "type": "array",
                                         "nullable": true,
-                                        "default": null
+                                        "default": null,
+                                        "description": "Members who paid, with the amount each put in. Omit for a bill with a single payer.",
+                                        "items": {
+                                            "type": "object",
+                                            "required": [
+                                                "id",
+                                                "amount"
+                                            ],
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "format": "int64"
+                                                },
+                                                "amount": {
+                                                    "type": "number",
+                                                    "format": "double"
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -8489,9 +8507,27 @@
                                         "default": null
                                     },
                                     "payers": {
-                                        "type": "object",
+                                        "type": "array",
                                         "nullable": true,
-                                        "default": null
+                                        "default": null,
+                                        "description": "Members who paid, with the amount each put in. Omit to leave the payers unchanged.",
+                                        "items": {
+                                            "type": "object",
+                                            "required": [
+                                                "id",
+                                                "amount"
+                                            ],
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "format": "int64"
+                                                },
+                                                "amount": {
+                                                    "type": "number",
+                                                    "format": "double"
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }

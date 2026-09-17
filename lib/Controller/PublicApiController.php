@@ -323,6 +323,7 @@ class PublicApiController extends OCSController {
 	 * @param string|null $comment
 	 * @param int|null $repeatFreq
 	 * @param int|null $deleted
+	 * @param list<array{id: int, amount: float}>|null $payers Members who paid, with the amount each put in. Omit to leave the payers unchanged.
 	 * @return DataResponse<Http::STATUS_OK, int, array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array<string, string>, array{}>
 	 * @throws Exception
 	 */
@@ -497,6 +498,7 @@ class PublicApiController extends OCSController {
 	 * @param int|null $timestamp
 	 * @param string|null $comment
 	 * @param int|null $repeatFreq
+	 * @param list<array{id: int, amount: float}>|null $payers Members who paid, with the amount each put in. Omit for a bill with a single payer.
 	 * @return DataResponse<Http::STATUS_OK, int, array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array{error: string}, array{}>
 	 * @throws DoesNotExistException
 	 * @throws Exception

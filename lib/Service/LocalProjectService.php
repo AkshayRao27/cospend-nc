@@ -1618,9 +1618,8 @@ class LocalProjectService implements IProjectService {
 		}
 		$member = $this->getMemberById($projectId, $payer);
 		$name = $member === null ? (string)$payer : (string)$member['name'];
-		throw new CospendBasicException('', Http::STATUS_BAD_REQUEST, [
-			'payers' => $this->l10n->t('%1$s is not one of the payers of this bill', [$name]),
-		]);
+		$message = $this->l10n->t('%1$s is not one of the payers of this bill', [$name]);
+		throw new CospendBasicException($message, Http::STATUS_BAD_REQUEST, ['payers' => $message]);
 	}
 
 	/**
@@ -1654,22 +1653,26 @@ class LocalProjectService implements IProjectService {
 		$names = [];
 		foreach ($payers as $payer) {
 			if (!is_array($payer) || !isset($payer['id'], $payer['amount'])) {
-				throw new CospendBasicException('', Http::STATUS_BAD_REQUEST, ['payers' => $this->l10n->t('Each payer needs a member and an amount')]);
+				$message = $this->l10n->t('Each payer needs a member and an amount');
+				throw new CospendBasicException($message, Http::STATUS_BAD_REQUEST, ['payers' => $message]);
 			}
 			$memberId = (int)$payer['id'];
 			$payerAmount = (float)$payer['amount'];
 			$member = $this->getMemberById($projectId, $memberId);
 			if ($member === null) {
-				throw new CospendBasicException('', Http::STATUS_BAD_REQUEST, ['payers' => $this->l10n->t('Not a valid choice')]);
+				$message = $this->l10n->t('Not a valid choice');
+				throw new CospendBasicException($message, Http::STATUS_BAD_REQUEST, ['payers' => $message]);
 			}
 			if ($payerAmount < 0.0) {
-				throw new CospendBasicException('', Http::STATUS_BAD_REQUEST, ['payers' => $this->l10n->t('%1$s cannot pay a negative amount', [$member['name']])]);
+				$message = $this->l10n->t('%1$s cannot pay a negative amount', [$member['name']]);
+				throw new CospendBasicException($message, Http::STATUS_BAD_REQUEST, ['payers' => $message]);
 			}
 			if ($payerAmount === 0.0) {
 				continue;
 			}
 			if (isset($names[$memberId])) {
-				throw new CospendBasicException('', Http::STATUS_BAD_REQUEST, ['payers' => $this->l10n->t('%1$s is listed as a payer more than once', [$member['name']])]);
+				$message = $this->l10n->t('%1$s is listed as a payer more than once', [$member['name']]);
+				throw new CospendBasicException($message, Http::STATUS_BAD_REQUEST, ['payers' => $message]);
 			}
 			$names[$memberId] = (string)$member['name'];
 			$candidates[] = ['id' => $memberId, 'amount' => $payerAmount];
@@ -1683,7 +1686,8 @@ class LocalProjectService implements IProjectService {
 		}
 
 		if (!Utils::payersCoverAmount(array_column($candidates, 'amount'), $amount)) {
-			throw new CospendBasicException('', Http::STATUS_BAD_REQUEST, ['payers' => $this->l10n->t('Payer amounts must add up to the bill amount')]);
+			$message = $this->l10n->t('Payer amounts must add up to the bill amount');
+			throw new CospendBasicException($message, Http::STATUS_BAD_REQUEST, ['payers' => $message]);
 		}
 
 		// The contract promises no order, so store a canonical one instead of whatever the

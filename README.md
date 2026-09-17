@@ -1,107 +1,82 @@
-# Nextcloud Cospend 💰
+# Another Cospend fork 💰
 
-[![phpunit-mysql](https://github.com/julien-nc/cospend-nc/actions/workflows/phpunit-mysql.yml/badge.svg?branch=main)](https://github.com/julien-nc/cospend-nc/actions/workflows/phpunit-mysql.yml)
-[![Crowdin](https://d322cqt584bo4o.cloudfront.net/moneybuster/localized.svg)](https://crowdin.com/project/moneybuster)
+A **heavily vibe-coded** fork of [julien-nc/cospend-nc](https://github.com/julien-nc/cospend-nc), the group/shared budget manager for Nextcloud.
 
-Nextcloud Cospend is a group/shared budget manager.
-It was inspired by the great [IHateMoney](https://github.com/spiral-project/ihatemoney/).
+**All the credit for Cospend belongs upstream.** This fork exists to develop features I want for my own use case *(because Splitwise decided to spectacularly enshitify itself, presumably thanks to whatever craptastic VC is behind it)*, most of which I've proposed as Feature Requests back upstream.
 
-You can use it when you share a house, when you go on vacation with friends, whenever you share expenses with a group of people.
+> **If you just want Cospend, install it from the [Nextcloud app store](https://apps.nextcloud.com/apps/cospend).** You only want this fork if one of the features below is worth the risk described immediately underneath.
 
-It lets you create projects with members and bills. Each member has a balance computed from the project bills.
-Balances are not an absolute amount of money at members disposal but rather a relative information 
-showing if a member has spent more for the group than the group has spent for her/him, independently of exactly who spent money for whom.
-This way you can see who owes the group and who the group owes.
-Ultimately you can ask for a settlement plan telling you which payments to make to reset members balances.
+---
 
-Project members are independent from Nextcloud users.
-Projects can be shared with other Nextcloud users or via public links.
+## Potential 🚩: Please read this before you install anything
 
-[<img width="30px" src="https://github.com/helcel-net/cowspent/raw/refs/heads/main/metadata/en-US/images/icon.png">](https://github.com/helcel-net/cowspent) [Cowspent](https://github.com/helcel-net/cowspent) Android client is [available in F-Droid in the IzzyOnDroid repo](https://apt.izzysoft.de/fdroid/index/apk/net.helcel.cowspent) and as a [downloadable APK file](https://github.com/helcel-net/cowspent/releases/latest).
+**Essentially all of the code in this fork has been written by some or the other LLM.** 
 
-[<img width="30px" src="https://gitlab.com/uploads/-/system/project/avatar/9981890/ic_launcher.png?width=48">](https://gitlab.com/eneiluj/moneybuster) [MoneyBuster](https://gitlab.com/eneiluj/moneybuster) (unmaintained) Android client is [available in F-Droid](https://f-droid.org/packages/net.eneiluj.moneybuster/) and on the [Play store](https://play.google.com/store/apps/details?id=net.eneiluj.moneybuster).
+Claude Code (Opus 5 and Fable 5) did a majority of the work, on top of an initial scaffold from DeepSeek V4 Flash Free via OpenCode. I've tested it as thoroughly as I know how to, and I run it on my own production instance.
 
-[<img width="30px" src="https://github.com/mayflower/PayForMe/raw/refs/heads/main/PayForMe/Assets.xcassets/AppIcon.appiconset/app_icon-40x40.png">](https://github.com/mayflower/PayForMe) [PayForMe](https://github.com/mayflower/PayForMe) iOS client is currently under developpement!
+I know just enough programming to know how much I absolutely DO NOT know. I cannot review code that is THIS complex. I cannot run security tests or foresee how problematic it is going to be to maintain in the future.
 
-The private and public APIs are documented using [the Nextcloud OpenAPI extractor](https://github.com/nextcloud/openapi-extractor/).
-This documentation can be accessed directly in Nextcloud.
-All you need is to install Cospend (>= v1.6.0) and use the
-[the OCS API Viewer app](https://apps.nextcloud.com/apps/ocs_api_viewer) to browse the OpenAPI documentation.
+Every release passes upstream's full CI (PHPUnit on MySQL, PostgreSQL and SQLite, Psalm, php-cs-fixer, ESLint, Stylelint, REUSE) and I test each feature by hand before it goes anywhere near my own data.
 
-## Features
+So far I haven't managed to break anything.
 
-* ✎ Create/edit/delete projects, members, bills, bill categories, currencies
-* ⚖ Check member balances
-* ⚖ View cumulative balances across all projects by currency and person
-* 🔗 Open cumulative balances and cross-project settlement with shareable URLs
-* 🗠 Display project statistics
-* ♻ Display settlement plan
-* Create settlement bills across multiple projects in one flow (full or partial)
-* Move bills from one project to another
-* Move bills to trash before actually deleting them
-* Archive old projects before deleting them
-* 🎇 Automatically create reimbursement bills from settlement plan
-* 🗓 Create recurring bills (day/week/month/year)
-* 📊 Optionally provide custom amount for each member in new bills
-* 🔗 Link personal files to bills (picture of physical receipt for example)
-* 👩 Public links for people outside Nextcloud (can be password protected)
-* 👫 Share projects with Nextcloud users/groups/circles
-* 🖫 Import/export projects as csv (compatible with csv files from IHateMoney and SplitWise)
-* 🔗 Generate link/QRCode to easily add projects in MoneyBuster
-* 🗲 Implement Nextcloud notifications and activity stream
+### ⚠️ That said: YMMV, and if you intend to deploy this, please please please have backups — because you never know what will go wrong when, where, how, and why.
 
-This app usually support the 2 or 3 last major versions of Nextcloud.
+Database migrations here **add columns and tables to your Cospend data**. They are written to be idempotent and none of them drop or rewrite anything, but "written to be" is not "proven to be" on *your* instance, with *your* data, on *your* database engine.
 
-This app is under development.
+**There is no support, no warranty, and no promise that any of this will be maintained.** If it eats your expense history, you get to keep both pieces. Take a backup first. Take a backup first. Take a backup first. Take a back...
 
-🌍 Help us to translate this app on [Nextcloud-Cospend/MoneyBuster Crowdin project](https://crowdin.com/project/moneybuster).
+---
 
-⚒ Check out other ways to help in the [contribution guidelines](https://github.com/julien-nc/cospend-nc/blob/master/CONTRIBUTING.md).
+## What's different from upstream
 
-Link to Nextcloud application website: https://apps.nextcloud.com/apps/cospend
+| <sub><sup>Obligatory Emoji</sub></sup> | Feature | Status |
+|---|---|---|
+| 🧮 | **Cross-project balances & settlement**: aggregate balances across several projects & get one settlement plan covering all of them, with multi-currency support | [PR #396](https://github.com/julien-nc/cospend-nc/pull/396)|
+| 🙈 | **Hide my own balance**: an option to keep your own balance out of the balance & settlement views | [PR #400](https://github.com/julien-nc/cospend-nc/pull/400) |
+| 🏷️ | **Auto-categorise bills by title**: per-project `title → category` mappings, applied when a bill is created or edited without a category. Mappings build themselves up as you work, & can be applied retroactively or copied between projects | [PR #406](https://github.com/julien-nc/cospend-nc/pull/406) |
+| 💳 | **Default payment mode per category**: each category can define a payment mode that new bills inherit. Chains with the above: a bill categorised from its title also gets that category's payment mode | fork only, for now |
+| 🩹 | **Fixes not yet upstream**: qualified SQL columns in bill queries; the legacy `payment_mode` column derived from the correct project | fork only, for now |
 
-## Donate
+Everything else is upstream's, tracked closely. See [CHANGELOG.md](CHANGELOG.md) for what landed when.
 
-I develop this app during my free time.
-If you'd like to support the creation and maintenance of this software, consider donating.
+### A note on the open PRs
 
-| [<img src="https://img.shields.io/badge/paypal-donate-blue.svg?logo=paypal&style=for-the-badge">](https://www.paypal.me/JulienVeyssier) | [<img src="https://img.shields.io/liberapay/receives/eneiluj.svg?logo=liberapay&style=for-the-badge">](https://liberapay.com/eneiluj/donate) | [<img src="https://img.shields.io/badge/github-sponsors-violet.svg?logo=github&style=for-the-badge">](https://github.com/sponsors/julien-nc) |
-| :---: |:---:|:---:|
+Three of the features above are proposed upstream and are waiting on review. If they merge, they leave this fork and become part of Cospend proper (which is the goal). Until then, this fork is the only place to get them, and it will keep following upstream's `main`.
 
-## Documentation
+---
 
-* [User documentation](https://github.com/julien-nc/cospend-nc/blob/master/docs/user.md)
-* [Admin documentation](https://github.com/julien-nc/cospend-nc/blob/master/docs/admin.md)
-* [Developer documentation](https://github.com/julien-nc/cospend-nc/blob/master/docs/dev.md)
-* [Implementation details](https://github.com/julien-nc/cospend-nc/blob/master/docs/IMPLEMENTATION_DETAILS.md)
-* [Release notes: v4.0.1](https://github.com/julien-nc/cospend-nc/blob/master/docs/releases/v4.0.1.md)
-* [CHANGELOG](https://github.com/julien-nc/cospend-nc/blob/master/CHANGELOG.md#change-log)
-* [AUTHORS](https://github.com/julien-nc/cospend-nc/blob/master/AUTHORS.md#authors)
+## Installing
 
-## Known issues
+There is no app store release. Grab a
+[release archive](https://github.com/AkshayRao27/cospend-nc/releases), extract it into your Nextcloud `apps/` (or `custom_apps/`) directory as `cospend`, and enable it:
 
-* ...
-
-Any feedback will be appreciated.
-
-## Screenshots
-
-![1](https://github.com/julien-nc/cospend-nc/raw/main/img/screenshots/cospend1.jpg)
-![2](https://github.com/julien-nc/cospend-nc/raw/main/img/screenshots/cospend2.jpg)
-![3](https://github.com/julien-nc/cospend-nc/raw/main/img/screenshots/cospend3.jpg)
-![4](https://github.com/julien-nc/cospend-nc/raw/main/img/screenshots/cospend4.jpg)
-
-## Nightly
-
-:warning: Make sure to only use nightly builds on test Nextcloud instances.
-
-To install the latest nightly, you can either
-* download it from https://apps.nextcloud.com/apps/cospend and replace
-the app directory manually in `nextcloud/apps`
-(make sure you give cospend directory's ownership to your webserver user)
-* use this occ command:
+```bash
+occ app:enable cospend
+occ upgrade          # runs the database migrations
 ```
-occ app:update --allow-unstable cospend
-```
-When you want to get back to stable releases,
-just disable and remove the app from app settings and reinstall it. You won't loose any data.
+
+Requires the Nextcloud versions upstream supports (currently 33–36). If you already run upstream Cospend, this replaces it in place and keeps your data (but see the disclaimer about backups, which applies with particular force to that sentence).
+
+To go back to upstream Cospend, install it over this one. The extra columns this fork adds should theoretically be ignored by upstream's code, but I have not tested this.
+
+## Versioning
+
+Fork releases bump **past** the upstream version they're based on, so `4.1.4` here is upstream `4.1.2` plus everything in the table above. That keeps Nextcloud's upgrade path sane and makes it obvious which upstream release a build corresponds to.
+
+## Branches
+
+| Branch | |
+|---|---|
+| `personal-prod` | What I actually run. Upstream + every feature above + fork-only fixes |
+| `upstream` | A clean mirror of upstream's `main` |
+| one branch per feature | Each tracks an open PR and stays rebased on upstream |
+
+## Contributing
+
+Please send Cospend bug reports and feature requests
+[upstream](https://github.com/julien-nc/cospend-nc/issues) - they belong there, not here. Issues specific to something in the table above are welcome in this repo, but I'm not sure when and if I will get around to fixing them if they don't directly affect my workflow.
+
+## Licence
+
+AGPL-3.0-or-later, same as upstream. See [COPYING](COPYING).

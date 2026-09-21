@@ -82,7 +82,7 @@ class AutoCategoryMappingsTest extends TestCase {
 	private function createBill(string $what, ?int $categoryId = null, bool $autoCategorise = true): int {
 		return $this->localProjectService->createBill(
 			'autocatproj', null, $what, $this->memberId, (string)$this->memberId, 10.0,
-			'n', null, null, $categoryId, 0, null, 1700000000, null, null, 0, false, $autoCategorise
+			'n', null, null, $categoryId, 0, null, 1700000000, null, null, 0, false, autoCategorise: $autoCategorise
 		);
 	}
 

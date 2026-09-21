@@ -43,7 +43,9 @@ Weight controls how bill shares are split.
 
 ## <a id='s1-4' />Bill
 
-A bill records an expense paid by one member and owed by one or more members.
+A bill records an expense paid by one or more members and owed by one or more members.
+
+Most bills have a single payer. When several members paid for the same thing, the bill records how much each of them put in; the contributions add up to the bill amount. Each payer's balance then goes up by what that member actually paid, not by the whole bill.
 
 # <a id='s2' />Create a project
 

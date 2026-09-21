@@ -477,6 +477,7 @@ class ApiController extends OCSController {
 	 * @param string|null $comment
 	 * @param int|null $repeatFreq
 	 * @param int|null $deleted
+	 * @param list<array{id: int, amount: float}>|null $payers Members who paid, with the amount each put in. Omit to leave the payers unchanged.
 	 * @param bool $autoCategorise
 	 * @return DataResponse<Http::STATUS_OK, int, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FAILED_DEPENDENCY, array<string, string>, array{}>
 	 * @throws DoesNotExistException
@@ -493,13 +494,14 @@ class ApiController extends OCSController {
 		?string $paymentMode = null, ?int $paymentModeId = null,
 		?int $categoryId = null, ?int $repeatAllActive = null, ?string $repeatUntil = null,
 		?int $timestamp = null, ?string $comment = null, ?int $repeatFreq = null, ?int $deleted = null,
+		?array $payers = null,
 		bool $autoCategorise = true,
 	): DataResponse {
 		try {
 			$this->projectService->editBill(
 				$projectId, $billId, $date, $what, $payer, $payedFor,
 				$amount, $repeat, $paymentMode, $paymentModeId, $categoryId,
-				$repeatAllActive, $repeatUntil, $timestamp, $comment, $repeatFreq, $deleted, true, $autoCategorise
+				$repeatAllActive, $repeatUntil, $timestamp, $comment, $repeatFreq, $deleted, true, $payers, $autoCategorise
 			);
 			return new DataResponse($billId);
 		} catch (ClientException $e) {
@@ -660,6 +662,7 @@ class ApiController extends OCSController {
 	 * @param int|null $timestamp
 	 * @param string|null $comment
 	 * @param int|null $repeatFreq
+	 * @param list<array{id: int, amount: float}>|null $payers Members who paid, with the amount each put in. Omit for a bill with a single payer.
 	 * @param bool $autoCategorise
 	 * @return DataResponse<Http::STATUS_OK, int, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FAILED_DEPENDENCY, array<string, string>, array{}>
 	 * @throws Exception
@@ -672,13 +675,13 @@ class ApiController extends OCSController {
 		string $projectId, ?string $date = null, ?string $what = null, ?int $payer = null, ?string $payedFor = null,
 		?float $amount = null, ?string $repeat = null, ?string $paymentMode = null, ?int $paymentModeId = null,
 		?int $categoryId = null, int $repeatAllActive = 0, ?string $repeatUntil = null, ?int $timestamp = null,
-		?string $comment = null, ?int $repeatFreq = null, bool $autoCategorise = true,
+		?string $comment = null, ?int $repeatFreq = null, ?array $payers = null, bool $autoCategorise = true,
 	): DataResponse {
 		try {
 			$newBillId = $this->projectService->createBill(
 				$projectId, $date, $what, $payer, $payedFor, $amount,
 				$repeat, $paymentMode, $paymentModeId, $categoryId, $repeatAllActive,
-				$repeatUntil, $timestamp, $comment, $repeatFreq, 0, true, $autoCategorise
+				$repeatUntil, $timestamp, $comment, $repeatFreq, 0, true, $payers, $autoCategorise
 			);
 			return new DataResponse($newBillId);
 		} catch (ClientException $e) {

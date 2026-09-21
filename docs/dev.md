@@ -97,10 +97,11 @@ This key is computed in `CospendService::getPersonIdentifier()` and included in 
 
 ## Public API compatibility notes
 
-Compared with the IHateMoney API, guest usage differs in two places:
+Compared with the IHateMoney API, guest usage differs in three places:
 
 - Project password is provided in the URL path.
 - `payed_for` is provided once as a comma-separated list.
+- Several payers per bill have no IHateMoney equivalent and **this API cannot set them**: `apiAddBill` and `apiEditBill` take only the single `payer`. Bills read through it do carry the split, as a `payers` array of `{"id": <memberId>, "amount": <float>}` plus a `payersFallback` boolean. Editing a bill here leaves its split untouched unless you send a `payer` different from the stored one, which is read as a deliberate change of payer and drops the split. To set a split, use the OCS API (`/ocs/v2.php/apps/cospend/api/v1/projects/{projectId}/bills`).
 
 ## Validation and tests
 

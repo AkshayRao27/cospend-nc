@@ -144,6 +144,8 @@ class LocalProjectServiceTest extends TestCase {
 			'tdpm5',
 			'tdpm6',
 			'tdpm7',
+			'tdpm8',
+			'tdpm9',
 			'123456',
 		];
 		foreach ($projIds as $projId) {
@@ -1906,6 +1908,93 @@ class LocalProjectServiceTest extends TestCase {
 		$this->assertEquals($catId, $bill['categoryid'], 'auto-categorisation did not assign the category');
 		$this->assertEquals($cardPmId, $bill['paymentmodeid'], 'category default payment mode did not chain');
 		$this->assertEquals('c', $bill['paymentmode']);
+
+		$this->localProjectService->deleteProject($projectId);
+	}
+
+	/**
+	 * The only test where all three bill features are active at once: a split bill still gets
+	 * its category from a title mapping and its payment mode from that category.
+	 *
+	 * Each feature is covered on its own elsewhere, and the upstream payers tests already pin
+	 * that the payers list settles $payer before the "payer is required" check. What nothing
+	 * else covers is the composition, which is what an upstream merge disturbs: the three
+	 * blocks sit within twenty lines of each other in createBill() and none of them conflicts
+	 * textually with the others.
+	 */
+	public function testMultiplePayersChainIntoAutoCategoryAndPaymentMode() {
+		$projectId = 'tdpm8';
+		$this->createAndPopulateProject($projectId);
+		$member1 = $this->localProjectService->getMemberByName($projectId, 'member1');
+		$member2 = $this->localProjectService->getMemberByName($projectId, 'member2');
+		$cardPmId = $this->getPaymentModeIdByOldId($projectId, 'c');
+
+		$catId = $this->apiController->createCategory($projectId, 'home improvement', 'i', '#123465', 2)->getData();
+		$resp = $this->apiController->editCategory($projectId, $catId, 'home improvement', 'i', '#123465', $cardPmId);
+		$this->assertEquals(Http::STATUS_OK, $resp->getStatus());
+		$resp = $this->apiController->createAutoCategoryMapping($projectId, 'ikea pax', $catId);
+		$this->assertEquals(Http::STATUS_OK, $resp->getStatus());
+
+		// a split bill with only a title: payers settle who paid, the mapping supplies the
+		// category, the category supplies the payment mode
+		$resp = $this->apiController->createBill(
+			$projectId, '2019-01-22', 'Ikea Pax', null,
+			$member1['id'] . ',' . $member2['id'], 42.0, Application::FREQUENCY_NO,
+			payers: [['id' => $member1['id'], 'amount' => 30.0], ['id' => $member2['id'], 'amount' => 12.0]]
+		);
+		$this->assertEquals(Http::STATUS_OK, $resp->getStatus(), json_encode($resp->getData()));
+		$bill = $this->billMapper->getBill($projectId, $resp->getData());
+
+		$this->assertEquals($catId, $bill['categoryid'], 'auto-categorisation did not assign the category');
+		$this->assertEquals($cardPmId, $bill['paymentmodeid'], 'category default payment mode did not chain');
+		$this->assertEquals('c', $bill['paymentmode'], 'legacy payment mode char was not derived');
+		$this->assertEqualsCanonicalizing(
+			[$member1['id'] => 30.0, $member2['id'] => 12.0],
+			array_column($bill['payers'], 'amount', 'id'),
+			'the split was lost'
+		);
+
+		$this->localProjectService->deleteProject($projectId);
+	}
+
+	/**
+	 * Adding a split to a bill that already has a payment mode must not re-derive one.
+	 *
+	 * editBill() only inherits the category default when neither the request nor the stored bill
+	 * carries a payment mode. A payers edit goes through the same method, so that guard is what
+	 * keeps an unrelated edit from overwriting a mode the user chose.
+	 */
+	public function testAddingPayersDoesNotRewriteAnExistingPaymentMode() {
+		$projectId = 'tdpm9';
+		$this->createAndPopulateProject($projectId);
+		$member1 = $this->localProjectService->getMemberByName($projectId, 'member1');
+		$member2 = $this->localProjectService->getMemberByName($projectId, 'member2');
+		$cardPmId = $this->getPaymentModeIdByOldId($projectId, 'c');
+		$cashPmId = $this->getPaymentModeIdByOldId($projectId, 'b');
+
+		$catId = $this->apiController->createCategory($projectId, 'home improvement', 'i', '#123465', 2)->getData();
+		$resp = $this->apiController->editCategory($projectId, $catId, 'home improvement', 'i', '#123465', $cardPmId);
+		$this->assertEquals(Http::STATUS_OK, $resp->getStatus());
+
+		$resp = $this->apiController->createBill(
+			$projectId, '2019-01-22', 'Ikea Pax', $member1['id'],
+			$member1['id'] . ',' . $member2['id'], 42.0, Application::FREQUENCY_NO, null, $cashPmId
+		);
+		$this->assertEquals(Http::STATUS_OK, $resp->getStatus());
+		$billId = $resp->getData();
+
+		// the edit only adds the split and the category; the payment mode the user picked stays
+		$resp = $this->apiController->editBill(
+			$projectId, $billId, null, null, null, null, null, null, null, null, $catId,
+			payers: [['id' => $member1['id'], 'amount' => 30.0], ['id' => $member2['id'], 'amount' => 12.0]]
+		);
+		$this->assertEquals(Http::STATUS_OK, $resp->getStatus(), json_encode($resp->getData()));
+
+		$bill = $this->billMapper->getBill($projectId, $billId);
+		$this->assertEquals($catId, $bill['categoryid']);
+		$this->assertEquals($cashPmId, $bill['paymentmodeid'], 'the category default overwrote an explicit payment mode');
+		$this->assertEquals('b', $bill['paymentmode']);
+		$this->assertCount(2, $bill['payers']);
 
 		$this->localProjectService->deleteProject($projectId);
 	}

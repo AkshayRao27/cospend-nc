@@ -144,6 +144,7 @@ class LocalProjectServiceTest extends TestCase {
 			'tdpm5',
 			'tdpm6',
 			'tdpm7',
+			'tdpm10',
 			'123456',
 		];
 		foreach ($projIds as $projId) {
@@ -1881,6 +1882,80 @@ class LocalProjectServiceTest extends TestCase {
 	 * ABOVE the category default lookup. The two features merge without a textual conflict, so
 	 * nothing but this test catches the wrong order.
 	 */
+	/**
+	 * Clients say "no payment mode" explicitly, so the guard cannot test for null alone.
+	 *
+	 * 🔴 This is the bug the feature shipped with: every real client sends the absence of a
+	 * payment mode as a value. The web UI posts paymentModeId 0 for every new bill (App.vue
+	 * seeds it), and MoneyBuster/CowSpend post 0 and/or the legacy char 'n'. A guard that only
+	 * accepted null therefore never fired outside this test suite — the web UI looked right
+	 * only because BillForm fills the mode client-side, and bills created from a phone came out
+	 * auto-categorised with no payment mode. Reproduced against the dev instance 2026-09-24.
+	 */
+	public function testCategoryDefaultPaymentModeFiresWhenNoneIsSentExplicitly() {
+		$projectId = 'tdpm10';
+		$this->createAndPopulateProject($projectId);
+		$member1 = $this->localProjectService->getMemberByName($projectId, 'member1');
+		$member2 = $this->localProjectService->getMemberByName($projectId, 'member2');
+		$payedFor = $member1['id'] . ',' . $member2['id'];
+		$cardPmId = $this->getPaymentModeIdByOldId($projectId, 'c');
+		$cashPmId = $this->getPaymentModeIdByOldId($projectId, 'b');
+
+		$catId = $this->apiController->createCategory($projectId, 'groceries', 'i', '#123465', 2)->getData();
+		$resp = $this->apiController->editCategory($projectId, $catId, 'groceries', 'i', '#123465', $cardPmId);
+		$this->assertEquals(Http::STATUS_OK, $resp->getStatus());
+
+		// every shape of "none" a client actually sends
+		$noneShapes = [
+			'omitted' => [null, null],
+			'paymentModeId 0' => [null, 0],
+			"legacy char 'n'" => ['n', null],
+			'both' => ['n', 0],
+			'empty legacy char' => ['', 0],
+		];
+		foreach ($noneShapes as $label => [$paymentMode, $paymentModeId]) {
+			$resp = $this->apiController->createBill(
+				$projectId, '2019-01-22', 'rewe', $member1['id'], $payedFor, 22.5,
+				Application::FREQUENCY_NO, $paymentMode, $paymentModeId, $catId
+			);
+			$this->assertEquals(Http::STATUS_OK, $resp->getStatus());
+			$bill = $this->billMapper->getBill($projectId, $resp->getData());
+			$this->assertEquals($cardPmId, $bill['paymentmodeid'], "category default did not fire for: $label");
+			$this->assertEquals('c', $bill['paymentmode'], "legacy char was not derived for: $label");
+		}
+
+		// an explicit payment mode still wins, in either representation
+		foreach ([[null, $cashPmId], ['b', null]] as [$paymentMode, $paymentModeId]) {
+			$resp = $this->apiController->createBill(
+				$projectId, '2019-01-22', 'rewe', $member1['id'], $payedFor, 22.5,
+				Application::FREQUENCY_NO, $paymentMode, $paymentModeId, $catId
+			);
+			$this->assertEquals(Http::STATUS_OK, $resp->getStatus());
+			$bill = $this->billMapper->getBill($projectId, $resp->getData());
+			$this->assertEquals($cashPmId, $bill['paymentmodeid'], 'an explicit payment mode was overridden');
+			$this->assertEquals('b', $bill['paymentmode']);
+		}
+
+		// 🔴 editBill() must NOT read 0 the same way: there, 0 is how a caller clears the payment
+		// mode. If the relaxed guard leaked into the edit path, clearing would be impossible and
+		// the default would reappear on every subsequent edit.
+		$resp = $this->apiController->createBill(
+			$projectId, '2019-01-22', 'rewe', $member1['id'], $payedFor, 22.5,
+			Application::FREQUENCY_NO, null, null, $catId
+		);
+		$this->assertEquals(Http::STATUS_OK, $resp->getStatus());
+		$billId = $resp->getData();
+		$bill = $this->billMapper->getBill($projectId, $billId);
+		$this->assertEquals($cardPmId, $bill['paymentmodeid']);
+		$resp = $this->apiController->editBill($projectId, $billId, null, null, null, null, null, null, null, 0, $catId);
+		$this->assertEquals(Http::STATUS_OK, $resp->getStatus());
+		$bill = $this->billMapper->getBill($projectId, $billId);
+		$this->assertEquals(0, $bill['paymentmodeid'], 'an explicit 0 no longer clears the payment mode');
+		$this->assertEquals('n', $bill['paymentmode']);
+
+		$this->localProjectService->deleteProject($projectId);
+	}
+
 	public function testAutoCategorisationChainsIntoDefaultPaymentMode() {
 		$projectId = 'tdpm7';
 		$this->createAndPopulateProject($projectId);

@@ -1028,7 +1028,7 @@ class LocalProjectService implements IProjectService {
 		// 🔴 The auto-categorisation block above MUST stay above this one: it is what resolves
 		// $categoryId for a bill categorised from its title, and this lookup reads $categoryId.
 		// This must stay ABOVE the block below, which derives the legacy 'payment_mode' char.
-		if ($paymentModeId === null && $paymentMode === null && $categoryId !== null && $categoryId !== 0) {
+		if (!$this->isPaymentModeGiven($paymentMode, $paymentModeId) && $categoryId !== null && $categoryId !== 0) {
 			$defaultPmId = $this->getCategoryDefaultPaymentMode($projectId, $categoryId);
 			if ($defaultPmId > 0) {
 				$paymentModeId = $defaultPmId;
@@ -2528,6 +2528,10 @@ class LocalProjectService implements IProjectService {
 		}
 		// auto payment mode: inherit the category's default only when neither the request nor the
 		// stored bill has a payment mode. Must stay ABOVE the legacy char derivation below.
+		// 🔴 Unlike createBill() this tests for null, NOT for isPaymentModeGiven(): on an edit a
+		// payment mode id of 0 is how a caller CLEARS the payment mode, and reading it as
+		// "unspecified" here would both make clearing impossible and let the default reappear on
+		// the next edit. Nothing is lost: a new bill gets its default at creation.
 		if ($paymentModeId === null && $paymentMode === null && (int)$dbBill->getPaymentModeId() === 0) {
 			$effectiveCategoryId = $categoryId ?? (int)$dbBill->getCategoryId();
 			if ($effectiveCategoryId !== 0) {
@@ -3645,6 +3649,25 @@ class LocalProjectService implements IProjectService {
 	 * @return int the payment mode id, or 0 if there is no usable default
 	 * @throws \OCP\DB\Exception
 	 */
+	/**
+	 * Whether the caller actually specified a payment mode.
+	 *
+	 * Clients state the ABSENCE of a payment mode explicitly rather than by omitting the
+	 * parameter: the web UI posts paymentModeId 0 for every new bill, and MoneyBuster/CowSpend
+	 * post 0 and/or the legacy char 'n'. Only a hand-written API call leaves both out, so a
+	 * null-only check means the category default effectively never fires outside the tests.
+	 * Reading 'n' as none is safe: the legacy chars in use are c, b, f, t and o, and 'n' is the
+	 * fallback this service itself writes for a bill with no payment mode.
+	 *
+	 * @param string|null $paymentMode
+	 * @param int|null $paymentModeId
+	 * @return bool
+	 */
+	private function isPaymentModeGiven(?string $paymentMode, ?int $paymentModeId): bool {
+		return ($paymentModeId !== null && $paymentModeId !== 0)
+			|| ($paymentMode !== null && $paymentMode !== '' && $paymentMode !== 'n');
+	}
+
 	private function getCategoryDefaultPaymentMode(string $projectId, int $categoryId): int {
 		try {
 			$category = $this->categoryMapper->getCategoryOfProject($projectId, $categoryId);

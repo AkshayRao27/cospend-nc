@@ -270,7 +270,8 @@
 					<NcCheckboxRadioSwitch
 						v-model="saveMappingChecked"
 						class="save-mapping-checkbox"
-						:disabled="!saveMappingExistingMapping && myBill.categoryid === 0">
+						:disabled="!saveMappingExistingMapping && myBill.categoryid === 0"
+						@update:model-value="onSaveMappingToggled">
 						{{ saveMappingLabel }}
 					</NcCheckboxRadioSwitch>
 				</div>
@@ -773,6 +774,7 @@ export default {
 			autoMappings: [],
 			userTouchedCategory: false,
 			saveMappingChecked: false,
+			saveMappingPersisted: false,
 		}
 	},
 
@@ -1281,9 +1283,11 @@ export default {
 		'myBill.what': function() {
 			this.userTouchedCategory = false
 			this.saveMappingChecked = false
+			this.saveMappingPersisted = false
 		},
 		'myBill.categoryid': function() {
 			this.saveMappingChecked = false
+			this.saveMappingPersisted = false
 		},
 		bill() {
 			this.myBill = {
@@ -1627,7 +1631,7 @@ export default {
 				}).then((response) => {
 					// to update balances
 					this.$emit('bill-saved', this.bill, this.myBill)
-					if (this.saveMappingChecked) {
+					if (this.saveMappingChecked && !this.saveMappingPersisted) {
 						this.persistSaveMapping()
 					}
 					showSuccess(t('cospend', 'Bill saved'))
@@ -1934,7 +1938,7 @@ export default {
 			this.billLoading = true
 			network.createBill(this.projectId, req).then((response) => {
 				this.createBillSuccess(response.data.ocs.data, billToCreate, mode)
-				if (this.saveMappingChecked) {
+				if (this.saveMappingChecked && !this.saveMappingPersisted) {
 					this.persistSaveMapping()
 				}
 			}).catch((error) => {
@@ -1968,7 +1972,20 @@ export default {
 		createBillDone() {
 			this.billLoading = false
 		},
-		persistSaveMapping() {
+		onSaveMappingToggled(checked) {
+			// 🔴 On an existing bill there is no later save for the mapping to ride along with:
+			// choosing a category calls onBillEdited(null, false), which saves the bill straight
+			// away, and the categoryid watcher clears this checkbox in the same moment. So the
+			// box can only be ticked AFTER saveBill() has already run, and the deferred write
+			// below was never reached. A new bill is different — there the tick precedes the
+			// create, so it still rides along with it.
+			if (!checked || this.isNewBill || this.noBill) {
+				return
+			}
+			this.saveMappingPersisted = true
+			this.persistSaveMapping(true)
+		},
+		persistSaveMapping(keepChecked = false) {
 			const title = (this.myBill.what || '').trim()
 			const catId = this.myBill.categoryid
 			if (!title || !catId) {
@@ -2005,7 +2022,7 @@ export default {
 						showError(getErrorMessage(error, t('cospend', 'Failed to add mapping')))
 					})
 			}
-			this.saveMappingChecked = false
+			this.saveMappingChecked = keepChecked
 		},
 		getPersonalParts() {
 			const result = {}

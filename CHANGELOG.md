@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 Upstream releases follow [Semantic Versioning](http://semver.org/); fork releases use calendar versioning, `YYYY.M.N`, so that a fork build can never be confused with, or overwritten by, an upstream release of the same number.
 
+## 2026.9.1 – 2026-09-25 (fork release)
+
+Bug fix release. Both fixes are for features that looked like they worked: the web UI filled in the payment mode client-side, and the mapping checkbox offered itself as if ticking it did something.
+
+### Fixed
+
+- A category's default payment mode is now applied to bills created from MoneyBuster, CowSpend and any other client. The server only inherited the default when the request omitted the payment mode entirely, but no real client does that — the web UI posts a payment mode id of 0 for every new bill and the mobile clients post 0 and/or the legacy `n` character, so bills created from a phone came out auto-categorised with no payment mode. An explicit payment mode still wins, and on an *edit* a 0 still means "clear the payment mode"
+- Ticking "Always assign X to bills titled Y" on an existing bill now saves the mapping. Choosing a category saves the bill immediately, which is also what cleared the checkbox, so the only code that wrote the mapping had already run by the time the box could be ticked and ticking it did nothing. New bills were unaffected
+
 ## 2026.9.0 – 2026-09-17 (fork release)
 
 First release under calendar versioning. Fork builds now use `YYYY.M.N` (year, month, release within that month) instead of tracking upstream's numbers, which had already produced two different 4.1.3s: upstream released its own 4.1.3 on the same day this fork claimed that number. A fork number can no longer collide with an upstream one, and Nextcloud can no longer offer to replace this build with the app store's. The upstream version this is built on is recorded under **Changed** below, not in the version string.

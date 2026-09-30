@@ -168,12 +168,13 @@ import CospendIcon from './components/icons/CospendIcon.vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
 import NcModal from '@nextcloud/vue/components/NcModal'
+import { useIsMobile } from '@nextcloud/vue/composables/useIsMobile'
 
 import isMobile from './mixins/isMobile.js'
 
 import { generateUrl } from '@nextcloud/router'
 import { getCurrentUser } from '@nextcloud/auth'
-import { subscribe, unsubscribe } from '@nextcloud/event-bus'
+import { emit, subscribe, unsubscribe } from '@nextcloud/event-bus'
 import moment from '@nextcloud/moment'
 import {
 	showSuccess,
@@ -215,6 +216,12 @@ export default {
 	provide() {
 		return {
 			isCurrentProjectFederated: () => this.isCurrentProjectFederated,
+		}
+	},
+	setup() {
+		return {
+			// the navigation's own breakpoint, which is wider than the isMobile mixin's
+			isNavigationOverlay: useIsMobile(),
 		}
 	},
 	data() {
@@ -432,6 +439,7 @@ export default {
 			this.getBills(this.cospend.currentProjectId, null, null, this.trashbinEnabled)
 		},
 		onNavMemberClick({ projectId, memberId }) {
+			this.closeNavigationOnMobile()
 			if (this.selectedMemberId === memberId) {
 				this.selectedMemberId = null
 			} else if (this.currentProjectId === projectId) {
@@ -629,7 +637,14 @@ export default {
 				)
 			})
 		},
+		closeNavigationOnMobile() {
+			// on mobile the navigation covers the content, so close it once something is picked
+			if (this.isNavigationOverlay) {
+				emit('toggle-navigation', { open: false })
+			}
+		},
 		onProjectClicked(projectId) {
+			this.closeNavigationOnMobile()
 			if (this.cospend.currentProjectId !== projectId) {
 				this.trashbinEnabled = false
 				this.selectProject(projectId, true, true)

@@ -1613,7 +1613,8 @@ export default {
 	font-size: 0.85em;
 	display: flex;
 	align-items: center;
-	white-space: nowrap; // Prevent text from wrapping
+	// wrap rather than run under the Settle button in a narrow list pane
+	overflow-wrap: anywhere;
 
 	&.positive {
 		color: var(--cp-positive-text);

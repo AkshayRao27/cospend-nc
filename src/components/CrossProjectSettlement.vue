@@ -1366,7 +1366,8 @@ export default {
 		/* Grid-based settlement configuration for better layout */
 		.settlement-configuration {
 			display: grid;
-			grid-template-columns: 1fr 1fr;
+			// NcSelect has a 260px min-width, so drop to one column when the pane is narrower than two
+			grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 			gap: 20px;
 			align-items: end;
 			margin-bottom: 16px;

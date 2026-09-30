@@ -513,7 +513,18 @@ export default {
 				this.updateProjectInfo(this.cospend.currentProjectId)
 				if (!select) {
 					this.currentBill = null
+					this.replaceNewBillUrl()
 				}
+			}
+		},
+		replaceNewBillUrl() {
+			// the new bill form is closed, so .../b/0 would reopen an empty one on reload
+			if (!this.cospend.pageIsPublic) {
+				window.history.replaceState(
+					null,
+					null,
+					generateUrl('/apps/cospend/p/{projectId}', { projectId: this.cospend.currentProjectId }),
+				)
 			}
 		},
 		onMultiBillEdit(billIds, categoryid, paymentmodeid) {
@@ -554,10 +565,12 @@ export default {
 		},
 		onCustomBillsCreated() {
 			this.currentBill = null
+			this.replaceNewBillUrl()
 			this.updateProjectInfo(this.cospend.currentProjectId)
 		},
 		onPersoBillsCreated() {
 			this.currentBill = null
+			this.replaceNewBillUrl()
 			this.updateProjectInfo(this.cospend.currentProjectId)
 		},
 		onResetSelection() {

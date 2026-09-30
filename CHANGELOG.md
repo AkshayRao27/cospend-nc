@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 Upstream releases follow [Semantic Versioning](http://semver.org/); fork releases use calendar versioning, `YYYY.M.N`, so that a fork build can never be confused with, or overwritten by, an upstream release of the same number.
 
+## 2026.9.2 – 2026-09-30 (fork release)
+
+Bug fix release. The cumulative balances view could not be used on a phone, and a browser pass at phone, tablet and desktop widths turned up three more bugs.
+
+### Fixed
+
+- Cumulative balances can now be used on a phone. Below 1024px Nextcloud shows either the list or the details pane, and cross-project mode always asked for the details, so the balances and the people to settle with could not be reached; only the "Select a person to settle" placeholder showed. The details pane now opens only while a settlement is open, and the back arrow returns to the list
+- Retitling an existing bill so that it matches an auto-category mapping now also applies that category's default payment mode. The form set the category and saved the bill with no payment mode. New bills already got the default from the server on save, but the form showed "None" until then
+- In the balances list, a person's balance wraps instead of running under the Settle button when the list pane is narrow
+- The settlement currency and type selectors stack when the settlement pane is too narrow for both, instead of pushing the second one off the right edge (seen at 1100px wide)
+
 ## 2026.9.1 – 2026-09-25 (fork release)
 
 Bug fix release. Both fixes are for features that looked like they worked: the web UI filled in the payment mode client-side, and the mapping checkbox offered itself as if ticking it did something.

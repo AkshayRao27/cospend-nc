@@ -1863,6 +1863,7 @@ export default {
 			const match = this.autoMappings.find((m) => m.bill_title.toLowerCase() === title)
 			if (match && match.category_id) {
 				this.myBill.categoryid = match.category_id
+				this.applyCategoryDefaultPaymentMode(match.category_id)
 				this.onBillEdited(null, false)
 			}
 		},

@@ -268,8 +268,10 @@ export default {
 	},
 	computed: {
 		shouldShowDetails() {
+			// on mobile NcAppContent shows either the list or the details, so the balances list
+			// is only reachable while no settlement is open
 			if (this.mode === 'cross-project-balances') {
-				return true
+				return this.currentSettlementPerson !== null
 			}
 			return (this.currentBill && this.currentBill !== null) || !['edition', 'normal'].includes(this.mode)
 		},
@@ -1501,9 +1503,12 @@ export default {
 		},
 		showList(showDetails) {
 			// In cross-project mode, details visibility is controlled by
-			// currentSettlementPerson and explicit settlement events.
-			// Ignore generic AppContent toggles to avoid clearing selection races.
+			// currentSettlementPerson. The mobile back button is the only thing
+			// that emits false, and it means "back to the balances list".
 			if (this.mode === 'cross-project-balances') {
+				if (showDetails === false && this.currentSettlementPerson !== null) {
+					this.onCancelSettlement()
+				}
 				return
 			}
 

@@ -361,9 +361,7 @@ class LocalProjectService implements IProjectService {
 				$activeMembers[] = $member;
 			}
 		}
-		// compute balances for past bills only
-		$balancePastBillsOnly = $this->appConfig->getValueString(Application::APP_ID, 'balance_past_bills_only', '0', lazy: true) === '1';
-		$balance = $this->getBalance($dbProjectId, $balancePastBillsOnly ? time() : null);
+		$balance = $this->getBalance($dbProjectId, $this->getDefaultBalanceMaxTimestamp());
 		$currencies = $this->getCurrencies($dbProjectId);
 		$categories = $this->getCategoriesOrPaymentModes($dbProjectId);
 		$paymentModes = $this->getCategoriesOrPaymentModes($dbProjectId, false);
@@ -478,7 +476,7 @@ class LocalProjectService implements IProjectService {
 		$projectPaymentModes = $this->getCategoriesOrPaymentModes($projectId, false);
 
 		// get the real global balances with no filters
-		$balances = $this->getBalance($projectId);
+		$balances = $this->getBalance($projectId, $this->getDefaultBalanceMaxTimestamp());
 
 		$members = $this->getMembers($projectId, 'lowername');
 		foreach ($members as $member) {
@@ -1189,7 +1187,7 @@ class LocalProjectService implements IProjectService {
 	 * @return array
 	 */
 	public function getProjectSettlement(string $projectId, ?int $centeredOn = null, ?int $maxTimestamp = null): array {
-		$balances = $this->getBalance($projectId, $maxTimestamp);
+		$balances = $this->getBalance($projectId, $maxTimestamp ?? $this->getDefaultBalanceMaxTimestamp());
 		if ($centeredOn === null) {
 			$transactions = $this->settle($balances);
 		} else {
@@ -1560,6 +1558,17 @@ class LocalProjectService implements IProjectService {
 		return array_values(array_map(static function (Member $dbMember) {
 			return $dbMember->jsonSerialize();
 		}, $members));
+	}
+
+	/**
+	 * Upper bound for balances when the caller does not give one:
+	 * now if the admin chose to only consider past bills, otherwise none
+	 *
+	 * @return int|null
+	 */
+	private function getDefaultBalanceMaxTimestamp(): ?int {
+		$balancePastBillsOnly = $this->appConfig->getValueString(Application::APP_ID, 'balance_past_bills_only', '0', lazy: true) === '1';
+		return $balancePastBillsOnly ? time() : null;
 	}
 
 	/**

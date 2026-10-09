@@ -18,6 +18,7 @@ use OCA\Cospend\Exception\CospendBasicException;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
 use OCP\Files\IRootFolder;
+use OCP\IAppConfig;
 use OCP\IGroupManager;
 use OCP\IL10N;
 use OCP\IUserManager;
@@ -145,6 +146,7 @@ class LocalProjectServiceTest extends TestCase {
 			'tdpm6',
 			'tdpm7',
 			'tdpm10',
+			'tpbo',
 			'123456',
 		];
 		foreach ($projIds as $projId) {
@@ -2083,6 +2085,55 @@ class LocalProjectServiceTest extends TestCase {
 		}
 
 		$this->localProjectService->deleteProject('testGetSettlement');
+	}
+
+	public function testBalancePastBillsOnly() {
+		$projectId = 'tpbo';
+		$appConfig = \OCP\Server::get(IAppConfig::class);
+		$previous = $appConfig->getValueString(Application::APP_ID, 'balance_past_bills_only', '0', lazy: true);
+
+		$this->localProjectService->createProject('tpbo', $projectId, null, 'test');
+		$m1 = $this->localProjectService->createMember($projectId, 'member1')['id'];
+		$m2 = $this->localProjectService->createMember($projectId, 'member2')['id'];
+		$future = time() + 30 * 24 * 60 * 60;
+		// member1 paid 10 for both in the past: member1 +5
+		$this->localProjectService->createBill(
+			$projectId, null, 'past', $m1, $m1 . ',' . $m2, 10.0, Application::FREQUENCY_NO,
+			'n', 0, 0, 0, null, time() - 24 * 60 * 60
+		);
+		// member2 pays 30 for both in a month: member1 -15
+		$this->localProjectService->createBill(
+			$projectId, null, 'future', $m2, $m1 . ',' . $m2, 30.0, Application::FREQUENCY_NO,
+			'n', 0, 0, 0, null, $future
+		);
+
+		$getStatBalance = function () use ($projectId, $m1): float {
+			$stats = $this->localProjectService->getStatistics($projectId)['stats'];
+			foreach ($stats as $stat) {
+				if ($stat['member']['id'] === $m1) {
+					return (float)$stat['balance'];
+				}
+			}
+			$this->fail('member1 missing from statistics');
+		};
+
+		try {
+			// every balance a user sees has to agree on whether future bills count
+			$appConfig->setValueString(Application::APP_ID, 'balance_past_bills_only', '1', lazy: true);
+			$this->assertEqualsWithDelta(5.0, $this->localProjectService->getProjectInfo($projectId)['balance'][$m1], 0.001);
+			$this->assertEqualsWithDelta(5.0, $this->localProjectService->getProjectSettlement($projectId)['balances'][$m1], 0.001);
+			$this->assertEqualsWithDelta(5.0, $getStatBalance(), 0.001);
+			// an explicit settlement date still wins
+			$this->assertEqualsWithDelta(-10.0, $this->localProjectService->getProjectSettlement($projectId, null, $future + 1)['balances'][$m1], 0.001);
+
+			$appConfig->setValueString(Application::APP_ID, 'balance_past_bills_only', '0', lazy: true);
+			$this->assertEqualsWithDelta(-10.0, $this->localProjectService->getProjectInfo($projectId)['balance'][$m1], 0.001);
+			$this->assertEqualsWithDelta(-10.0, $this->localProjectService->getProjectSettlement($projectId)['balances'][$m1], 0.001);
+			$this->assertEqualsWithDelta(-10.0, $getStatBalance(), 0.001);
+		} finally {
+			$appConfig->setValueString(Application::APP_ID, 'balance_past_bills_only', $previous, lazy: true);
+			$this->localProjectService->deleteProject($projectId);
+		}
 	}
 
 	public function testDeleteMember() {

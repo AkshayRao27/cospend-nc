@@ -1652,18 +1652,6 @@ class LocalProjectService implements IProjectService {
 	}
 
 	/**
-	 * Public wrapper around project balance computation.
-	 * Used by cross-project aggregation logic.
-	 *
-	 * @param string $projectId
-	 * @param int|null $maxTimestamp
-	 * @return array<string, float>
-	 */
-	public function getProjectBalance(string $projectId, ?int $maxTimestamp = null): array {
-		return $this->getBalance($projectId, $maxTimestamp);
-	}
-
-	/**
 	 * Circles classes are provided by another app and are not always available.
 	 *
 	 * @return mixed|null

@@ -14,6 +14,7 @@ use OCA\Cospend\Db\BillMapper;
 use OCA\Cospend\Db\ProjectMapper;
 use OCP\AppFramework\Http;
 use OCP\Files\IRootFolder;
+use OCP\IAppConfig;
 use OCP\IL10N;
 use OCP\IUserManager;
 use OCP\Share\IManager;
@@ -220,6 +221,40 @@ class CrossProjectServiceTest extends TestCase {
 		$projectIds = array_values(array_unique(array_map(static fn (array $p): string => $p['projectId'], $targetEntry['projects'])));
 		$this->assertContains(self::PROJECT_ACTIVE, $projectIds);
 		$this->assertNotContains(self::PROJECT_ARCHIVED, $projectIds);
+	}
+
+	public function testGetCrossProjectBalancesHonoursPastBillsOnly(): void {
+		$appConfig = \OCP\Server::get(IAppConfig::class);
+		$previous = $appConfig->getValueString(Application::APP_ID, 'balance_past_bills_only', '0', lazy: true);
+		$ids = $this->createProjectWithUsers(self::PROJECT_ACTIVE);
+
+		$this->createSimpleBill(self::PROJECT_ACTIVE, $ids['target'], $ids['current'], 20.0, 'past');
+		$this->localProjectService->createBill(
+			self::PROJECT_ACTIVE, null, 'future', $ids['target'], (string)$ids['current'], 30.0,
+			Application::FREQUENCY_NO, 'n', 0, 0, 0, null, time() + 30 * 24 * 60 * 60
+		);
+
+		$getTargetBalance = function (): float {
+			$result = $this->cospendService->getCrossProjectBalances(self::USER1);
+			foreach ($result['personBalances'] as $entry) {
+				if (($entry['member']['userid'] ?? null) === self::USER2) {
+					return (float)$entry['projects'][0]['balance'];
+				}
+			}
+			$this->fail('target user missing from cross-project balances');
+		};
+
+		try {
+			$appConfig->setValueString(Application::APP_ID, 'balance_past_bills_only', '1', lazy: true);
+			$this->assertEqualsWithDelta(20.0, $getTargetBalance(), 0.001);
+			$sidebarBalance = $this->localProjectService->getProjectInfo(self::PROJECT_ACTIVE)['balance'][$ids['target']];
+			$this->assertEqualsWithDelta($sidebarBalance, $getTargetBalance(), 0.001);
+
+			$appConfig->setValueString(Application::APP_ID, 'balance_past_bills_only', '0', lazy: true);
+			$this->assertEqualsWithDelta(50.0, $getTargetBalance(), 0.001);
+		} finally {
+			$appConfig->setValueString(Application::APP_ID, 'balance_past_bills_only', $previous, lazy: true);
+		}
 	}
 
 	public function testCreateCrossProjectSettlementValidationErrors(): void {

@@ -104,7 +104,7 @@ class CospendService {
 				];
 			}
 
-			$balances = $this->localProjectService->getProjectBalance($projectId);
+			$balances = $project['balance'] ?? [];
 			$members = $project['members'] ?? [];
 
 			$currentUserMemberId = null;

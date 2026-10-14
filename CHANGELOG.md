@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 Upstream releases follow [Semantic Versioning](http://semver.org/); fork releases use calendar versioning, `YYYY.M.N`, so that a fork build can never be confused with, or overwritten by, an upstream release of the same number.
 
+## 2026.10.0 – 2026-10-14 (fork release)
+
+Bug fix release. With "Only consider past bills to compute balances" switched on, the sidebar left out future-dated bills while the settlement plan, the statistics and the cumulative balances still counted them, so the same member showed two different balances.
+
+### Fixed
+
+- The settlement plan and the "Global Balance" column in the statistics now honour "Only consider past bills to compute balances", so they agree with the sidebar. A settlement date picked by hand still takes precedence
+- The cumulative balances view now takes each project's balance from the same place as the sidebar, so it also leaves out future bills when that setting is on
+
 ## 2026.9.2 – 2026-09-30 (fork release)
 
 Bug fix release. The cumulative balances view could not be used on a phone, and a browser pass at phone, tablet and desktop widths turned up three more bugs.

@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 Upstream releases follow [Semantic Versioning](http://semver.org/); fork releases use calendar versioning, `YYYY.M.N`, so that a fork build can never be confused with, or overwritten by, an upstream release of the same number.
 
+## 4.3.0 – 2026-10-20
+
+### Changed
+
+- Update npm and composer dependencies @julien-nc
+
+### Fixed
+
+- Do not expose share passwords anywhere and do not expose the project owner's user ID for shares above the caller's access level @julien-nc (credits to Jahn Kohlhas)
+- Enforce access permissions for local project IDs containing '@' @julien-nc
+- Never return share passwords from `getPublicShares()` @julien-nc (credits to Jahn Kohlhas)
+- Fix `createBill()` failing due to a type mismatch when the payed-for ID is not a string, add a unit test @leafonthewind [#420](https://github.com/julien-nc/cospend-nc/pull/420)
+- Fix README.md links after the main branch rename @fwinn [#424](https://github.com/julien-nc/cospend-nc/pull/424)
+- Wrap the settlement options on narrow screens @AkshayRao27 [#427](https://github.com/julien-nc/cospend-nc/pull/427)
+
 ## 2026.9.0 – 2026-09-17 (fork release)
 
 First release under calendar versioning. Fork builds now use `YYYY.M.N` (year, month, release within that month) instead of tracking upstream's numbers, which had already produced two different 4.1.3s: upstream released its own 4.1.3 on the same day this fork claimed that number. A fork number can no longer collide with an upstream one, and Nextcloud can no longer offer to replace this build with the app store's. The upstream version this is built on is recorded under **Changed** below, not in the version string.

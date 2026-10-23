@@ -130,11 +130,13 @@ class ApiController extends OCSController {
 		$id = $this->localProjectService->findAvailableProjectId($id);
 		try {
 			$jsonProject = $this->localProjectService->createProject($name, $id, null, $this->userId);
-			$projInfo = $this->localProjectService->getProjectInfo($jsonProject['id']);
-			$projInfo['myaccesslevel'] = Application::ACCESS_LEVEL_ADMIN;
+			$projInfo = $this->localProjectService->getProjectInfoForAccessLevel($jsonProject['id'], Application::ACCESS_LEVEL_ADMIN);
 			return new DataResponse($projInfo);
 		} catch (CospendBasicException $e) {
-			return new DataResponse($e->data, Http::STATUS_NOT_FOUND);
+			$statusCode = $e->getCode() === Http::STATUS_BAD_REQUEST
+				? Http::STATUS_BAD_REQUEST
+				: Http::STATUS_NOT_FOUND;
+			return new DataResponse($e->data, $statusCode);
 		} catch (Exception $e) {
 			return new DataResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 		}
@@ -571,7 +573,7 @@ class ApiController extends OCSController {
 	 * @throws Exception
 	 *
 	 * 200: The bill was moved successfully
-	 * 401: Current user is not allowed to create a bill in the target project
+	 * 401: Current user is not allowed to access the source or the target project
 	 * 400: Failed to move the bill
 	 * 404: The bill to move was not found
 	 */
@@ -579,6 +581,10 @@ class ApiController extends OCSController {
 	#[CospendUserPermissions(minimumLevel: Application::ACCESS_LEVEL_PARTICIPANT)]
 	#[OpenAPI(scope: OpenAPI::SCOPE_DEFAULT, tags: ['Bills'])]
 	public function moveBill(string $projectId, int $billId, string $toProjectId): DataResponse {
+		$userAccessLevel = $this->localProjectService->getUserMaxAccessLevel($this->userId, $projectId);
+		if ($userAccessLevel < Application::ACCESS_LEVEL_PARTICIPANT) {
+			return new DataResponse(['message' => $this->l->t('You are not allowed to access the source project')], Http::STATUS_UNAUTHORIZED);
+		}
 		$userAccessLevel = $this->localProjectService->getUserMaxAccessLevel($this->userId, $toProjectId);
 		if ($userAccessLevel < Application::ACCESS_LEVEL_PARTICIPANT) {
 			return new DataResponse(['message' => $this->l->t('You are not allowed to access the target project')], Http::STATUS_UNAUTHORIZED);
@@ -1426,7 +1432,8 @@ class ApiController extends OCSController {
 	): DataResponse {
 		try {
 			$share = $this->localProjectService->createFederatedShare($projectId, $userCloudId, $this->userId, $accessLevel, $manuallyAdded);
-			return new DataResponse($share->jsonSerialize());
+			$jsonShare = $this->localProjectService->sanitizeJsonShare($share->jsonSerialize(), $share->getAccessLevel());
+			return new DataResponse($jsonShare);
 		} catch (CospendBasicException $e) {
 			return new DataResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
 		}
@@ -1843,8 +1850,7 @@ class ApiController extends OCSController {
 	public function importCsvProject(string $path): DataResponse {
 		$result = $this->cospendService->importCsvProject($path, $this->userId);
 		if (isset($result['project_id'])) {
-			$projInfo = $this->localProjectService->getProjectInfo($result['project_id']);
-			$projInfo['myaccesslevel'] = Application::ACCESS_LEVEL_ADMIN;
+			$projInfo = $this->localProjectService->getProjectInfoForAccessLevel($result['project_id'], Application::ACCESS_LEVEL_ADMIN);
 			return new DataResponse($projInfo);
 		}
 		return new DataResponse(['message' => $result['message']], Http::STATUS_BAD_REQUEST);
@@ -1867,8 +1873,7 @@ class ApiController extends OCSController {
 	public function importSWProject(string $path): DataResponse {
 		$result = $this->cospendService->importSWProject($path, $this->userId);
 		if (isset($result['project_id'])) {
-			$projInfo = $this->localProjectService->getProjectInfo($result['project_id']);
-			$projInfo['myaccesslevel'] = Application::ACCESS_LEVEL_ADMIN;
+			$projInfo = $this->localProjectService->getProjectInfoForAccessLevel($result['project_id'], Application::ACCESS_LEVEL_ADMIN);
 			return new DataResponse($projInfo);
 		}
 		return new DataResponse(['message' => $result['message']], Http::STATUS_BAD_REQUEST);

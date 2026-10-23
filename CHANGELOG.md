@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/).
 Upstream releases follow [Semantic Versioning](http://semver.org/); fork releases use calendar versioning, `YYYY.M.N`, so that a fork build can never be confused with, or overwritten by, an upstream release of the same number.
 
+## 2026.10.1 – 2026-10-23 (fork release)
+
+Security release: brings in upstream 4.3.0, which stops Cospend from exposing share passwords and tightens access checks.
+
+### Changed
+
+- Synced with upstream 4.3.0 (see its entry below): share passwords are no longer returned by any API, the project owner's user ID is no longer exposed to shares above the caller's access level, and local projects whose ID contains '@' are permission-checked again @julien-nc
+- In Settings → Misc, "Hide my balance" now comes before "Use time in dates", matching how it is laid out in [PR #400](https://github.com/julien-nc/cospend-nc/pull/400)
+
 ## 4.3.0 – 2026-10-20
 
 ### Changed
